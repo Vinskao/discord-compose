@@ -34,3 +34,7 @@ build/
 
 ### logback data ###
 asset-jdbc-logback/
+
+
+### Node ###
+node_modules
