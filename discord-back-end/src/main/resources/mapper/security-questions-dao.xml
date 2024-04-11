@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.mli.discord.module.login.dao.SecurityQuestionDAO">
+
+    <resultMap id="SecurityQuestionResultMap" type="com.mli.discord.module.login.model.SecurityQuestion">
+        <id property="id" column="id" />
+        <result property="username" column="username" />
+        <result property="question" column="question" />
+        <result property="answer" column="answer" />
+    </resultMap>
+
+    <insert id="insertSecurityQuestion" parameterType="com.mli.discord.module.login.model.SecurityQuestion">
+        INSERT INTO security_questions (username, question, answer)
+        VALUES (#{username}, #{question}, #{answer})
+    </insert>
+    <update id="modifySecurityQuestion" parameterType="com.mli.discord.module.login.model.SecurityQuestion">
+        UPDATE security_questions
+        SET question = #{question}, answer = #{answer}
+        WHERE username = #{username}
+    </update>
+
+    <select id="getQuestionByUsername" parameterType="String" resultType="String">
+        SELECT question FROM security_questions WHERE username = #{username}
+    </select>
+
+    <select id="verifyAnswer" parameterType="com.mli.discord.module.login.model.SecurityQuestion" resultType="Integer">
+        SELECT COUNT(*) FROM security_questions
+        WHERE username = #{username} AND question = #{question} AND answer = #{answer}
+    </select>
+</mapper>

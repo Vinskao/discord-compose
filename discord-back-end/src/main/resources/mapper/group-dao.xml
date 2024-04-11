@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mli.discord.module.grouping.dao.GroupDAO">
+
+    <resultMap id="GroupResultMap" type="com.mli.discord.module.grouping.model.Group">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="name" property="name" jdbcType="NVARCHAR"/>
+    </resultMap>
+
+    <select id="selectAllGroups" resultMap="GroupResultMap">
+        SELECT id, name FROM [group]
+    </select>
+
+</mapper>

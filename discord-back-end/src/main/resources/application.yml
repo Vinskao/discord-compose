@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: discord
+  datasource:
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    # url: jdbc:sqlserver://172.27.36.106:1433;databaseName=discord;trustServerCertificate=true
+    url: ${DATASOURCE_URL:jdbc:sqlserver://sql_edge:1433;databaseName=discord;trustServerCertificate=true}
+    username: ${DATASOURCE_USERNAME:SA}
+    password: ${DATASOURCE_PASSWORD:Wawi247525=}
+  devtools:
+    restart:
+      enabled: true
+  security:
+    user:
+      password: wawi247525
+
+#logging:
+#  level.org.springframework.security: DEBUG
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    persistAuthorization: true
+
+server:
+  port: 8088
+  servlet:
+    session:
+      cookie:
+        http-only: true
+
+mybatis:
+  mapper-locations: classpath:/mapper/*.xml

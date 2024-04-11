@@ -1,0 +1,34 @@
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mli.discord.module.grouping.dao.UserToRoomDAO">
+    <resultMap id="UserToRoomResultMap" type="com.mli.discord.module.grouping.model.UserToRoom">
+        <result property="username" column="username"/>
+        <result property="roomId" column="room_id"/>
+    </resultMap>
+
+    <insert id="insertUserToRoom" parameterType="com.mli.discord.module.grouping.model.UserToRoom">
+        INSERT INTO user_to_room (username, room_id) VALUES (#{username}, #{roomId})
+    </insert>
+
+    <delete id="deleteUserFromRoom" parameterType="com.mli.discord.module.grouping.model.UserToRoom">
+        DELETE FROM user_to_room WHERE username = #{username} AND room_id = #{roomId}
+    </delete>
+
+    <select id="selectUsersByRoomId" parameterType="int" resultMap="UserToRoomResultMap">
+        SELECT * FROM user_to_room WHERE room_id = #{roomId}
+    </select>
+
+    <select id="existsByUsernameAndRoomId" parameterType="map" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM user_to_room WHERE username = #{username} AND room_id = #{roomId}
+    </select>
+    <select id="selectRoomsByUsername" parameterType="string" resultMap="UserToRoomResultMap">
+        SELECT * FROM user_to_room WHERE username = #{username}
+    </select>
+
+    <delete id="deleteAllUserEntriesByUsername" parameterType="string">
+        DELETE FROM user_to_room WHERE username = #{username}
+    </delete>
+    
+    
+    
+
+</mapper>

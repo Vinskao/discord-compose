@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.mli.discord.module.login.dao.UserDAO">
+
+    <resultMap id="userResultMap" type="com.mli.discord.module.login.model.User">
+        <id property="id" column="id"/>
+        <result property="username" column="username"/>
+        <result property="password" column="password"/>
+        <result property="authority" column="authority"/>
+        <result property="birthday" column="birthday"/>
+        <result property="interests" column="interests"/>
+
+    </resultMap>
+
+    <insert id="insertUser" parameterType="com.mli.discord.module.login.model.User">
+        INSERT INTO users (username, password, authority, birthday, interests)
+        VALUES (#{username}, #{password}, #{authority}, #{birthday}, #{interests});
+    </insert>
+
+    <select id="findAll" resultMap="userResultMap">
+        SELECT * FROM users;
+    </select>
+
+    <select id="findById" parameterType="java.lang.Integer" resultType="com.mli.discord.module.login.model.User">
+        SELECT * FROM users WHERE id = #{id}
+    </select>
+
+    <select id="findByUsernameAndPassword" parameterType="com.mli.discord.module.login.model.User" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM users WHERE username = #{username} AND password = #{password}
+    </select>
+    <select id="findEncodedPasswordByUsername" parameterType="java.lang.String" resultType="com.mli.discord.module.login.model.User">
+        SELECT * FROM users WHERE username = #{username}
+    </select>
+    <select id="findByUsername" resultType="com.mli.discord.module.login.model.User">
+        SELECT * FROM users WHERE username = #{username}
+    </select>
+    <update id="updatePasswordByUsername" parameterType="map">
+        UPDATE users
+        SET password = #{password}
+        WHERE username = #{username}
+    </update>
+    <update id="updateUserDetailsByUsername" parameterType="map">
+        UPDATE users
+        SET birthday = #{birthday}, interests = #{interests}
+        WHERE username = #{username}
+    </update>
+
+</mapper>
