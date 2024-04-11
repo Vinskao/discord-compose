@@ -1,0 +1,35 @@
+{
+  "name": "asset-front-end",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@popperjs/core": "^2.11.8",
+    "@stomp/stompjs": "^7.0.0",
+    "@vueuse/core": "^10.9.0",
+    "axios": "^1.6.8",
+    "bootstrap": "^5.3.3",
+    "bootswatch": "^5.3.3",
+    "element-plus": "^2.6.1",
+    "lodash": "^4.17.21",
+    "mitt": "^3.0.1",
+    "sockjs-client": "^1.6.1",
+    "stomp-websocket": "2.3.4-next",
+    "sweetalert2": "^11.6.13",
+    "vue": "^3.3.4",
+    "vue-cookies": "^1.8.3",
+    "vue-native-websocket-vue3": "^3.1.7",
+    "vue-router": "^4.3.0",
+    "vuex": "^4.0.2",
+    "webstomp-client": "^1.2.6"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.2.3",
+    "vite": "^4.4.5"
+  }
+}
