@@ -17,7 +17,10 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -31,6 +34,7 @@ import com.mli.discord.module.login.service.UserService;
 
 /**
  * 安全配置類，定義了應用的安全性設置。
+ * 
  * @Author D3031104
  * @version 1.0
  */
@@ -41,7 +45,7 @@ public class SecurityConfig {
     @Autowired
     @Lazy
     private UserService userService;
-    
+
     /**
      * 身份驗證提供者的Bean定義。
      * 
@@ -54,7 +58,7 @@ public class SecurityConfig {
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
-    
+
     /**
      * 安全過濾器鏈配置。
      * 
@@ -63,7 +67,7 @@ public class SecurityConfig {
      * @throws Exception 配置過程中可能發生的異常
      */
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
+    SecurityFilterChain filterChain(HttpSecurity httpSecurity, SessionRegistry sessionRegistry) throws Exception {
 
         httpSecurity
                 .csrf().disable()
@@ -71,11 +75,9 @@ public class SecurityConfig {
                 .formLogin()
                 .loginProcessingUrl("/user/login")
                 .successHandler((request, response, authentication) -> {
-                    // Handle successful authentication
                     HttpSession session = request.getSession(true);
                     session.setAttribute("username", authentication.getName());
 
-                    // 获取用户权限并转换为逗号分隔的字符串
                     String authorities = authentication.getAuthorities().stream()
                             .map(GrantedAuthority::getAuthority)
                             .collect(Collectors.joining(","));
@@ -91,24 +93,37 @@ public class SecurityConfig {
                 .cors()
                 .and()
 
-
                 .authorizeRequests()
                 .antMatchers("/user/check-session", "/user/logout", "/user/login",
-                        "/user/find-by-id", "/user/register", "/user/me","/get-question","/verify-answer","/user/update-password")
-                // .antMatchers("/**")
+                        "/user/find-by-id", "/user/register", "/user/me", "/get-question", "/verify-answer",
+                        "/user/update-password")
                 .permitAll()
-                .antMatchers("/export-chat-history").hasAuthority("ADMIN") // 仅ADMIN角色可以访问
+                .antMatchers("/export-chat-history").hasAuthority("ADMIN")
                 .antMatchers("/user-to-room/**",
                         "/user-to-group/**", "/send", "/get-messages",
                         "/room/find-all-rooms", "/groups/find-all-groups",
                         "/modify-security-question", "/add-security-question", "/user/update-user-details")
-                .hasAnyAuthority("ADMIN", "NORMAL") // ADMIN和NORMAL角色都可以访问
-                .anyRequest().authenticated() // 所有其他请求都需要认证
+                .hasAnyAuthority("ADMIN", "NORMAL")
+                .anyRequest().authenticated()
                 .and()
-                .httpBasic(); // 使用HTTP Basic认证
+                .sessionManagement()
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                .maximumSessions(1)
+                .sessionRegistry(sessionRegistry())
+                .maxSessionsPreventsLogin(true)
+                .expiredSessionStrategy(sessionInformationExpiredEvent -> {
+                    HttpServletResponse response = sessionInformationExpiredEvent.getResponse();
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().print("{\"message\": \"Session expired due to another login!\"}");
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                })
+                .and()
+                .sessionFixation().migrateSession()
+                .and()
+                .httpBasic();
         return httpSecurity.build();
     }
-    
+
     /**
      * 密碼編碼器的Bean定義。
      * 
@@ -118,8 +133,7 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    
-    
+
     /**
      * CORS配置源的Bean定義。
      * 
@@ -137,8 +151,7 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-    
-    
+
     /**
      * 身份驗證管理器的Bean定義。
      * 
@@ -150,8 +163,7 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
         return http.getSharedObject(AuthenticationManagerBuilder.class).build();
     }
-    
-    
+
     /**
      * HTTP防火牆配置的Bean定義。
      * 
@@ -163,8 +175,7 @@ public class SecurityConfig {
         firewall.setAllowSemicolon(true);
         return firewall;
     }
-    
-    
+
     /**
      * Web安全自定義配置的Bean定義。
      * 
@@ -173,6 +184,11 @@ public class SecurityConfig {
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
         return (web) -> web.httpFirewall(allowUrlEncodedSlashHttpFirewall());
+    }
+
+    @Bean
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
     }
 
 }
