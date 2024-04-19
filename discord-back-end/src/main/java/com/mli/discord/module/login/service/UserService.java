@@ -39,15 +39,22 @@ public class UserService implements UserDetailsService {
     @Autowired
     private UserDAO userDAO;
 
+    /**
+     * 根據使用者名稱加載使用者詳細資訊。
+     *
+     * @param username 使用者名稱
+     * @return 使用者詳細資訊
+     * @throws UsernameNotFoundException 如果找不到使用者，則拋出此異常
+     */
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+
         try {
             User user = userDAO.findByUsername(username);
             if (user == null) {
                 throw new UsernameNotFoundException("User not found with username: " + username);
             }
 
-            // 解析用户的权限字段，并为每个权限创建GrantedAuthority对象
             List<GrantedAuthority> authorities = Arrays.stream(user.getAuthority().split(","))
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
@@ -55,29 +62,33 @@ public class UserService implements UserDetailsService {
             return new org.springframework.security.core.userdetails.User(
                     user.getUsername(),
                     user.getPassword(),
-                    authorities // 将权限列表传递给UserDetails对象
-            );
+                    authorities);
+
         } catch (EmptyResultDataAccessException e) {
             throw new UsernameNotFoundException("User not found with username: " + username, e);
         }
     }
 
+    /**
+     * 根據使用者名稱和密碼查找使用者。
+     *
+     * @param username 使用者名稱
+     * @param password 使用者密碼
+     * @return 匹配的使用者，如果找不到則返回 null
+     */
     public User findByUsernameAndPassword(String username, String password) {
         logger.info("service, Authenticating User: {}", username);
 
         try {
-            // 从数据库中获取用户存储的加密密码
             User user = userDAO.findEncodedPasswordByUsername(username);
 
             if (user != null) {
-                // 从用户对象中获取存储的加密密码
                 String encodedPassword = user.getPassword();
 
-                // 使用PasswordEncoder.matches方法比较用户提交的密码和存储的加密密码
                 boolean passwordMatches = passwordEncoder.matches(password, encodedPassword);
 
                 if (passwordMatches) {
-                    return user; // 返回用户对象，认证成功
+                    return user;
                 }
             }
 
@@ -106,6 +117,13 @@ public class UserService implements UserDetailsService {
         }
     }
 
+    /**
+     * 更新使用者密碼。
+     *
+     * @param username    使用者名稱
+     * @param newPassword 新密碼
+     * @return 密碼是否成功更新
+     */
     @Operation(summary = "更新密碼")
     public boolean updatePassword(String username, String newPassword) {
         logger.info("服務層，正在更新用戶 {} 的密碼", username);
@@ -125,16 +143,24 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * 根据用户名查找用户
+     * 根據使用者名稱查找使用者。
      *
-     * @param username 用户名
-     * @return 查找到的用户，如果未找到则返回 null
+     * @param username 使用者名稱
+     * @return 查找到的使用者，如果未找到就返回 null
      */
     public User findByUsername(String username) {
         logger.info("Searching for user by username: {}", username);
         return userDAO.findByUsername(username);
     }
 
+    /**
+     * 更新使用者詳細資訊。
+     *
+     * @param username  使用者名稱
+     * @param birthday  使用者生日
+     * @param interests 使用者興趣
+     * @return 是否成功更新使用者詳細資訊
+     */
     public boolean updateUserDetails(String username, LocalDateTime birthday, String interests) {
         logger.info("Service layer, updating user details for: {}", username);
         try {
@@ -151,5 +177,4 @@ public class UserService implements UserDetailsService {
             return false;
         }
     }
-
 }

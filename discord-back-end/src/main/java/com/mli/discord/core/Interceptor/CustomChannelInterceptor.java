@@ -14,7 +14,7 @@ import org.springframework.messaging.Message;
  * @Author D3031104
  * @version 1.0
  */
-public class CustomChannelInterceptor implements ChannelInterceptor{
+public class CustomChannelInterceptor implements ChannelInterceptor {
     /**
      * 在消息發送之前對消息進行處理。
      * 
@@ -22,7 +22,7 @@ public class CustomChannelInterceptor implements ChannelInterceptor{
      * @param channel 消息通道
      * @return 處理後的消息
      */
-	@Override
+    @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
         if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
