@@ -22,4 +22,4 @@ COPY --from=build /app/target/discord-0.0.1-SNAPSHOT.jar /discord.jar
 ENTRYPOINT ["java", "-jar", "/discord.jar"]
 
 # 定義容器內應用將會使用的端口
-EXPOSE 8088
+EXPOSE 8080

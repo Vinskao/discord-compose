@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration scan="true" scanPeriod="10 seconds">
     <contextName>JPANAME</contextName>
-    <property name="log.path" value="/var/opt/logs/discord"/>
+    <property name="log.path" value="asset-jdbc-logback"/>
     <property name="server.name" value="asset-jdbc"/>
     <property name="log.pattern" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"/>
     <property name="log.file" value="${log.path}/${server.name}.%d{yyyyMMdd-HHmmss}.log.gz"/>

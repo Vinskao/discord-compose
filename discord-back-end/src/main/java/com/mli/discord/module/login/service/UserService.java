@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mli.discord.module.login.dao.UserDAO;
+import com.mli.discord.module.login.dto.AuthenticationResponse;
 import com.mli.discord.module.login.model.User;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,25 +37,39 @@ public class UserService implements UserDetailsService {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     @Autowired
     private PasswordEncoder passwordEncoder;
+    @Autowired
+    private JwtService jwtService;
 
     @Autowired
     private UserDAO userDAO;
 
     /**
-     * 根據使用者名稱加載使用者詳細資訊。
-     *
-     * @param username 使用者名稱
-     * @return 使用者詳細資訊
-     * @throws UsernameNotFoundException 如果找不到使用者，則拋出此異常
+     * 處理成功的身份驗證後，生成JWT令牌並返回。
+     * 
+     * @param username 用戶名
+     * @return ResponseEntity 包含令牌和操作狀態
+     */
+    public ResponseEntity<AuthenticationResponse> processSuccessfulAuthentication(String username) {
+        logger.info("Processing successful authentication for: {}", username);
+        UserDetails userDetails = loadUserByUsername(username);
+        // Generate the JWT token
+        String jwtToken = jwtService.generateAndPersistToken(userDetails);
+        AuthenticationResponse response = new AuthenticationResponse("Success", jwtToken);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 根據用戶名加載用戶詳情，實現 UserDetailsService 介面。
+     * 
+     * @param username 用戶名
+     * @return UserDetails 包含用戶的安全信息
+     * @throws UsernameNotFoundException 當用戶不存在時拋出
      */
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-
         try {
-            User user = userDAO.findByUsername(username);
-            if (user == null) {
-                throw new UsernameNotFoundException("User not found with username: " + username);
-            }
+            User user = userDAO.findByUsername(username)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
 
             List<GrantedAuthority> authorities = Arrays.stream(user.getAuthority().split(","))
                     .map(SimpleGrantedAuthority::new)
@@ -63,18 +79,17 @@ public class UserService implements UserDetailsService {
                     user.getUsername(),
                     user.getPassword(),
                     authorities);
-
         } catch (EmptyResultDataAccessException e) {
             throw new UsernameNotFoundException("User not found with username: " + username, e);
         }
     }
 
     /**
-     * 根據使用者名稱和密碼查找使用者。
-     *
-     * @param username 使用者名稱
-     * @param password 使用者密碼
-     * @return 匹配的使用者，如果找不到則返回 null
+     * 根據用戶名和密碼驗證用戶，並返回用戶信息。
+     * 
+     * @param username 用戶名
+     * @param password 密碼
+     * @return User 匹配的用戶，如果密碼錯誤則返回 null
      */
     public User findByUsernameAndPassword(String username, String password) {
         logger.info("service, Authenticating User: {}", username);
@@ -118,11 +133,11 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * 更新使用者密碼。
-     *
-     * @param username    使用者名稱
+     * 更新用戶的密碼。
+     * 
+     * @param username    用戶名
      * @param newPassword 新密碼
-     * @return 密碼是否成功更新
+     * @return boolean 表示是否更新成功
      */
     @Operation(summary = "更新密碼")
     public boolean updatePassword(String username, String newPassword) {
@@ -143,23 +158,24 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * 根據使用者名稱查找使用者。
+     * 根據用戶名查找用戶。
      *
-     * @param username 使用者名稱
-     * @return 查找到的使用者，如果未找到就返回 null
+     * @param username 用戶名
+     * @return User 查找到的用戶，如果未找到則拋出UsernameNotFoundException
      */
     public User findByUsername(String username) {
         logger.info("Searching for user by username: {}", username);
-        return userDAO.findByUsername(username);
+        return userDAO.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
     }
 
     /**
-     * 更新使用者詳細資訊。
+     * 更新用戶詳情，如生日和興趣。
      *
-     * @param username  使用者名稱
-     * @param birthday  使用者生日
-     * @param interests 使用者興趣
-     * @return 是否成功更新使用者詳細資訊
+     * @param username  用戶名
+     * @param birthday  生日
+     * @param interests 興趣
+     * @return boolean 表示更新是否成功
      */
     public boolean updateUserDetails(String username, LocalDateTime birthday, String interests) {
         logger.info("Service layer, updating user details for: {}", username);
@@ -177,4 +193,5 @@ public class UserService implements UserDetailsService {
             return false;
         }
     }
+
 }

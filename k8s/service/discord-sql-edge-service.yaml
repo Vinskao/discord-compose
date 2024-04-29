@@ -1,0 +1,12 @@
+# Service 定義，提供穩定的網絡地址給 Deployment
+apiVersion: v1
+kind: Service
+metadata:
+  name: sql-edge-service # Service 的名稱
+spec:
+  type: ClusterIP # 服務類型
+  ports:
+    - port: 1433 # 對外服務的端口
+      targetPort: 1433 # 容器的目標端口
+  selector:
+    app: sql-edge # 選擇連接哪些 Pod

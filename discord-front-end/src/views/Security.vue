@@ -112,8 +112,10 @@ const newPassword = ref("");
 const route = useRoute();
 const resetPassword = ref(false);
 
+// 可编辑的数据
 const editableBirthday = ref("");
 const editableInterests = ref("");
+// 编辑模式标志
 const editMode = ref(false);
 
 const formatDate = (dateString) => {
@@ -128,7 +130,7 @@ const formatDate = (dateString) => {
 const toggleEditMode = () => {
   editMode.value = !editMode.value;
   if (editMode.value) {
-    editableBirthday.value = formatDate(userInfo.value.birthday);
+    editableBirthday.value = formatDate(userInfo.value.birthday); // 使用formatDate确保正确的格式
     editableInterests.value = userInfo.value.interests;
   }
 };
@@ -137,7 +139,7 @@ const saveUserInfo = async () => {
   const today = new Date().toISOString().split("T")[0];
   if (editableBirthday.value > today) {
     await Swal.fire("錯誤", "生日不能超過今天的日期", "error");
-    return;
+    return; // 提前终止函数执行
   }
 
   try {
@@ -150,9 +152,9 @@ const saveUserInfo = async () => {
       }
     );
     await Swal.fire("成功", "資訊已更新", "success");
-    // 更新成功后，重新取得用户信息以刷新顯示
+    // 更新成功后，重新获取用户信息以刷新显示
     await getUserInfo();
-    editMode.value = false;
+    editMode.value = false; // 关闭编辑模式
   } catch (error) {
     console.error("更新資訊時出錯:", error);
     await Swal.fire("錯誤", "更新資訊失敗，請稍後再試。", "error");
@@ -173,7 +175,7 @@ const getUserInfo = async () => {
       `${import.meta.env.VITE_HOST_URL}/user/find-by-username`,
       { username: localUserInfo.username }
     );
-    userInfo.value = response.data; // 保存API的用户信息
+    userInfo.value = response.data; // 保存从 API 获取的用户信息
   } catch (error) {
     console.error("獲取用户信息失敗:", error);
     await Swal.fire("錯誤", "獲取用户信息失敗。", "error");
@@ -217,23 +219,22 @@ onMounted(async () => {
 });
 
 const toggleSection = (section) => {
-  // 在 ResetPassword 狀態為 true 時才切換「modifyInfo」部分
+  // Only toggle the 'modifyInfo' section if the resetPassword state is true
   if (
     section === "modifyInfo" &&
     !(route.fullPath && history.state && history.state.resetPassword)
   ) {
-    // 未經授權嘗試開啟修改訊息部分
+    // Unauthorized attempt to open the modifyInfo section
     Swal.fire({
       icon: "error",
       title: "無法訪問",
       text: "請前往登入頁面使用忘記密碼以進入進行密碼修改",
     });
-    return; // 防止該部分切換
+    return; // Prevent the section from toggling
   }
   sections[section] = !sections[section];
 };
 
-// 增加安全問題
 const addQuestion = async () => {
   if (!userInfo.value || !userInfo.value.username) {
     await Swal.fire(
@@ -262,7 +263,7 @@ const addQuestion = async () => {
     await Swal.fire("錯誤", "你已新增過安全問題。", "error");
   }
 };
-// 修改安全問題
+
 const modifyQuestion = async () => {
   const localUserInfo = JSON.parse(localStorage.getItem("userInfo"));
 
@@ -310,6 +311,7 @@ const changePassword = async () => {
     if (response.status === 200) {
       sessionStorage.removeItem("bypassAuth");
       await Swal.fire("成功", "密碼已成功更改", "success");
+      // 可以在这里调用 getUserInfo() 或其他方法来刷新用户信息
     } else {
       throw new Error("Password update failed");
     }

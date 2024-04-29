@@ -1,0 +1,15 @@
+# Service 定義，用於為後端服務提供穩定的網絡地址
+apiVersion: v1
+kind: Service
+metadata:
+  name: discord-backend
+spec:
+  type: NodePort # 服務類型為 NodePort，允許外部訪問
+  ports:
+    - port: 8080 # 服務端口
+      targetPort: 8080 # Pod 上的目標端口
+      nodePort: 30000 # 指定節點上的端口
+  selector:
+    app: discord-backend # 選擇標籤為 app=discord-backend 的 Pod
+  sessionAffinity: ClientIP
+  # 當設定為 ClientIP，這意味著負載均衡器將會根據客戶端的 IP 地址來分配流量。簡而言之，來自同一個 IP 地址的所有請求都會被導向到同一台服務器，只要該會話持續存在。

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.mli.discord.module.login.dao.JwtTokenDAO">
+
+	<resultMap id="jwtTokenResultMap"
+		type="com.mli.discord.module.login.model.JwtToken">
+		<id property="id" column="id" />
+		<result property="exp" column="exp" />
+		<result property="iat" column="iat" />
+		<result property="jti" column="jti" />
+		<result property="iss" column="iss" />
+		<result property="sub" column="sub" />
+		<result property="typ" column="typ" />
+	</resultMap>
+
+	<insert id="insertJwtToken" parameterType="com.mli.discord.module.login.model.JwtToken">
+        INSERT INTO jwt_tokens (exp, iat, jti, iss, sub, typ)
+        VALUES (#{exp}, #{iat}, #{jti}, #{iss}, #{sub}, #{typ});
+    </insert>
+
+	<select id="findAll" resultMap="jwtTokenResultMap">
+		SELECT * FROM jwt_tokens;
+	</select>
+</mapper>

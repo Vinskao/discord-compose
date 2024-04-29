@@ -38,13 +38,12 @@ const roomComponent = ref(null);
 const emit = defineEmits(["roomSelected", "roomDeselected"]);
 
 onMounted(async () => {
-  // 檢查會話狀態
   try {
     const userInfoResponse = await axios.post(
       `${import.meta.env.VITE_HOST_URL}/user/me`
     );
-    // 如果請求成功，說明使用者已登錄，可以繼續加載群組房間信息
     console.log("User info:", userInfoResponse.data);
+
     if (
       !userInfoResponse.data ||
       Object.keys(userInfoResponse.data).length === 0
@@ -56,7 +55,6 @@ onMounted(async () => {
     router.push("/login");
   }
 
-  // load一群組下的所有房間
   try {
     const response = await axios.post(
       `${import.meta.env.VITE_HOST_URL}/room/find-all-rooms`
@@ -92,10 +90,47 @@ const handleRoomLeft = () => {
   selectedRoomId.value = null;
   emit("roomDeselected");
 };
+// const selectRoom = async (id) => {
+//   console.log("Selected Room ID: ", id);
+//   const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+//   const currentUsername = userInfo.username;
+
+//   // 连接 WebSocket
+//   stompClient.connect({}, () => {
+//     // 请求当前在线用户列表
+//     stompClient.send("/app/get-online-users", {}, {});
+
+//     // 订阅在线用户列表主题
+//     stompClient.subscribe('/topic/online-users', (message) => {
+//       const onlineUsers = JSON.parse(message.body);
+//       console.log("Online Users:", onlineUsers);
+
+//       // 检查当前用户是否已在线
+//       if (onlineUsers.includes(currentUsername)) {
+//         Swal.fire("提示", "您已在聊天室中，无法加入。", "warning");
+//       } else {
+//         // 用户不在线，进行房间选择逻辑
+//         selectedRoomId.value = id;
+
+//         // 如果 Room 组件已加载且 joinRoom 方法可用，则加入新房间
+//         if (roomComponent.value && typeof roomComponent.value.joinRoom === "function") {
+//           roomComponent.value.joinRoom(id);
+//         } else {
+//           console.error("joinRoom 方法不可用");
+//         }
+
+//         // 触发 roomSelected 事件
+//         emit("roomSelected");
+//       }
+//     });
+//   }, (error) => {
+//     console.error("WebSocket connection error: ", error);
+//   });
+// };
 const selectRoom = async (id) => {
   console.log("Selected Room ID: ", id);
 
-  // 如果已經選擇了房間且不是當前房間，則先離開當前房間
+  // 如果已经选择了房间且不是当前房间，则先离开当前房间
   if (
     selectedRoomId.value &&
     selectedRoomId.value !== id &&
@@ -105,10 +140,10 @@ const selectRoom = async (id) => {
     await roomComponent.value.leaveRoom(selectedRoomId.value);
   }
 
-  // 更新 selectedRoomId 為新選中的房間ID
+  // 更新 selectedRoomId 为新选中的房间ID
   selectedRoomId.value = id;
 
-  // 確保 Room 組件已加載並且 joinRoom 方法可用
+  // 确保 Room 组件已加载并且 joinRoom 方法可用
   if (
     roomComponent.value &&
     typeof roomComponent.value.joinRoom === "function"
@@ -121,7 +156,6 @@ const selectRoom = async (id) => {
   emit("roomSelected");
 };
 </script>
-
 <style>
 .container {
   display: flex;

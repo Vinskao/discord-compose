@@ -1,0 +1,32 @@
+# Deployment 定義，用來設定後端服務的副本和部署策略
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discord-backend # Deployment 的名稱
+spec:
+  replicas: 1 # 要求 Kubernetes 運行1個副本
+  selector:
+    matchLabels:
+      app: discord-backend # 用來選擇 Pod 的標籤
+  template:
+    metadata:
+      labels:
+        app: discord-backend
+    spec:
+      containers:
+        - name: discord-backend
+          image: papakao/discord-backend:latest # 指定後端服務的 Docker 映像
+          ports:
+            - containerPort: 8080 # 容器內的應用將會監聽的端口
+          env: # 環境變量設定
+            - name: DATASOURCE_URL
+              value: "jdbc:sqlserver://sql-edge-service:1433;databaseName=discord;trustServerCertificate=true"
+            - name: DATASOURCE_USERNAME
+              value: "SA"
+            - name: DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret # 密碼從 Kubernetes Secret 中獲取
+                  key: password
+            - name: CORS_ALLOWED_ORIGIN
+              value: "http://localhost:8090"

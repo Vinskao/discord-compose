@@ -1,9 +1,16 @@
 package com.mli.discord.module.login.model;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
 
 /**
  * 用户
@@ -11,24 +18,46 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @version 1.0
  * @author D3031104
  */
+@Builder
 @Schema(description = "用戶")
-public class User {
-    /** 用户ID */
-    @Schema(hidden = true)
+public class User implements UserDetails {
+    private static final long serialVersionUID = 1L;
+	@Schema(hidden = true)
     private Integer id;
-    /** 密碼 */
     @Schema(description = "用戶密碼")
     private String password;
-    /** 用户名 */
     @Schema(description = "用戶名稱")
     private String username;
-    /** 用户权限 */
     @Schema(description = "用戶權限")
     private String authority;
     @Schema(description = "用户生日")
     private LocalDateTime birthday;
-    @Schema(description = "用户兴趣")
     private String interests;
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return Collections.singletonList(new SimpleGrantedAuthority(this.authority));
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
 
     public User() {
     }

@@ -1,7 +1,11 @@
 package com.mli.discord.module.login.dto;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Objects;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * 
@@ -20,7 +24,9 @@ public class LoginDTO {
     public LoginDTO() {
     }
 
-    public LoginDTO(String username, String password) {
+    @JsonCreator
+    public LoginDTO(@JsonProperty("username") String username,
+            @JsonProperty("password") String password) {
         this.username = username;
         this.password = password;
     }

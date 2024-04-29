@@ -3,6 +3,7 @@ package com.mli.discord.module.login.controller;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
@@ -16,16 +17,17 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mli.discord.module.login.dao.UserRepository;
+import com.mli.discord.module.login.dto.AuthenticationResponse;
 import com.mli.discord.module.login.dto.LoginDTO;
 import com.mli.discord.module.login.dto.RegisterDTO;
 import com.mli.discord.module.login.dto.UpdateUserDetailsDTO;
@@ -53,55 +55,45 @@ public class UserController {
     @Autowired
     private UserService userService;
     @Autowired
-    private SessionRegistry sessionRegistry;
-    @Autowired
     private UserRepository userRepository;
     @Autowired
     private AuthenticationManager authenticationManager;
 
     /**
-     * 處理用戶登入請求。認證成功則建立會話並返回成功響應，認證失敗則返回錯誤訊息。
+     * Processes login requests. Delegates authentication to the UserService and
+     * returns the token or error response.
      *
-     * @param loginDTO 包含用戶名和密碼的登入資訊
-     * @param request  HttpServletRequest 對象，用於創建會話
-     * @return 登入成功或失敗的 ResponseEntity
+     * @param loginDTO Contains the username and password for login.
+     * @return A ResponseEntity containing either an authentication token or an
+     *         error message.
      */
     @PostMapping("/login")
-    @Operation(summary = "用戶登入")
-    public ResponseEntity<?> login(@RequestBody LoginDTO loginDTO, HttpServletRequest request) {
+    @Operation(summary = "User login")
+    public ResponseEntity<AuthenticationResponse> login(@RequestBody LoginDTO loginDTO, HttpServletRequest request) {
+        logger.info("Trying to login via UserController");
         try {
+            // Authenticate the login request
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginDTO.getUsername(), loginDTO.getPassword()));
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            User user = (User) userService.loadUserByUsername(loginDTO.getUsername());
+            // Assuming userService.processSuccessfulAuthentication handles JWT creation
+            ResponseEntity<AuthenticationResponse> response = userService
+                    .processSuccessfulAuthentication(loginDTO.getUsername());
+
+            // Set session attributes if authentication is successful
             HttpSession session = request.getSession(true);
-            session.setAttribute("username", user.getUsername());
-            session.setAttribute("authority", user.getAuthority().toString());
+            session.setAttribute("username", authentication.getName());
+            session.setAttribute("authorities", authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .collect(Collectors.joining(",")));
 
-            return ResponseEntity.ok().body("Login Successful");
+            return response;
         } catch (AuthenticationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login Failed: " + e.getMessage());
+            logger.error("Login failed: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new AuthenticationResponse("Login Failed: " + e.getMessage(), null));
         }
-    }
-
-    /**
-     * 使用者登出
-     * 
-     * @param request HTTP 請求物件
-     * @return ResponseEntity 包含登出成功訊息的回應實體
-     */
-    @PostMapping("/logout")
-    @Operation(summary = "使用者登出")
-    @ResponseBody
-    public ResponseEntity<String> logout(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            sessionRegistry.removeSessionInformation(session.getId());
-            session.invalidate();
-            SecurityContextHolder.clearContext();
-        }
-        return new ResponseEntity<>("登出成功", HttpStatus.OK);
     }
 
     /**
@@ -180,16 +172,22 @@ public class UserController {
      * @return ResponseEntity userInfo
      */
     @PostMapping("/me")
-    @Operation(summary = "驗證session中有沒有使用者")
-    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            String username = (String) session.getAttribute("username");
-            String authorities = (String) session.getAttribute("authorities");
-            if (username != null && authorities != null) {
-                Map<String, String> userInfo = new HashMap<>();
-                userInfo.put("username", username);
-                userInfo.put("authorities", authorities);
+    @Operation(summary = "Get current user's details from JWT")
+    public ResponseEntity<?> getCurrentUserDetails() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            // Assuming the UserDetails or similar principal object has appropriate methods
+            // to fetch needed info
+            Object principal = authentication.getPrincipal();
+
+            if (principal instanceof UserDetails) {
+                UserDetails userDetails = (UserDetails) principal;
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("username", userDetails.getUsername());
+                userInfo.put("authorities", userDetails.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .collect(Collectors.toList()));
+
                 return ResponseEntity.ok(userInfo);
             }
         }

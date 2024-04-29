@@ -1,0 +1,23 @@
+# Deployment 定義，用來部署前端應用
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discord-frontend # Deployment 名稱
+spec:
+  replicas: 1 # 運行1個副本
+  selector:
+    matchLabels:
+      app: discord-frontend # 使用標籤選擇 Pod
+  template:
+    metadata:
+      labels:
+        app: discord-frontend # 給 Pod 指定標籤
+    spec:
+      containers:
+        - name: discord-frontend
+          image: papakao/discord-frontend:latest # 指定使用的 Docker 映像
+          ports:
+            - containerPort: 8090 # 容器監聽的端口
+          env:
+            - name: VITE_HOST_URL
+              value: "http://localhost:30000" # 設定環境變數

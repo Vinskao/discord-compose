@@ -124,21 +124,33 @@ const verifySecurityAnswer = async () => {
 
 const login = async () => {
   try {
-    const userData = new URLSearchParams();
-    userData.append("username", username.value);
-    userData.append("password", password.value);
-
+    const userData = {
+      username: username.value,
+      password: password.value,
+    };
     const loginResponse = await axios.post(
       `${import.meta.env.VITE_HOST_URL}/user/login`,
-      userData
+      JSON.stringify(userData),
+      { headers: { "Content-Type": "application/json" } }
     );
 
     if (loginResponse.status === 200) {
-      // 登入成功後，呼叫API以取得使用者資訊
+      sessionStorage.setItem("authToken", loginResponse.data.token);
+      axios.defaults.headers.common[
+        "Authorization"
+      ] = `Bearer ${loginResponse.data.token}`;
+      if (!axios.defaults.headers.common["Authorization"]) {
+        console.error("Authorization token is missing");
+      } else {
+        console.log(
+          "Authorization header set:",
+          axios.defaults.headers.common["Authorization"]
+        );
+      }
       const userInfoResponse = await axios.post(
         `${import.meta.env.VITE_HOST_URL}/user/me`
       );
-      localStorage.setItem("userInfo", JSON.stringify(userInfoResponse.data)); // 保存用户信息到localStorage
+      localStorage.setItem("userInfo", JSON.stringify(userInfoResponse.data));
       router.push("/index");
       console.log("現在的login username是" + username.value);
 

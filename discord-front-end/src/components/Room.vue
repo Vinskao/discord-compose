@@ -134,18 +134,18 @@ window.addEventListener("beforeunload", () => {
       type: "LEAVE",
     };
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/app/message", false); // false 表示同步請求
+    xhr.open("POST", "/app/message", false); // 第三个参数 false 表示同步请求
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.send(JSON.stringify(leaveMessage));
   }
 });
 
-// messages 數組監視
+// 监视 messages 数组的变化
 watchEffect(() => {
   if (messages.value.length > 0 && messagesContainer.value) {
     // 等待 Vue 更新 DOM
     nextTick(() => {
-      // 滑至 messagesContainer 元素的底部
+      // 滚动到 messagesContainer 元素的底部
       messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
     });
   }
@@ -154,7 +154,7 @@ watchEffect(() => {
 const changeRoom = async (newRoomId) => {
   if (newRoomId) {
     currentRoomId.value = newRoomId; // 更新 currentRoomId
-    await joinRoom(newRoomId); // 加入新房間
+    await joinRoom(newRoomId);
   }
   console.log("完成join api", newRoomId);
 };
@@ -170,28 +170,24 @@ watch(
 );
 
 let stompSubscription = null;
-// 重接STOMP並訂閱新房間的主題
 const reconnectStompAndSubscribe = (newRoomId) => {
   if (stompClient && isConnected) {
     if (stompSubscription) {
       stompSubscription.unsubscribe();
     }
-    // 訂閱接收訊息的主題
     stompSubscription = stompClient.subscribe(
       `/topic/message/${newRoomId}`,
       (msg) => {
         const messageData = JSON.parse(msg.body);
-        // 當使用者加入時，將其新增至 connectedUsers
         if (messageData.type === "JOIN") {
           connectedUsers.value.push(messageData.username);
-        }
-        // 當使用者離開時，從 connectedUsers 中移除
-        else if (messageData.type === "LEAVE") {
+        } else if (messageData.type === "LEAVE") {
           const index = connectedUsers.value.indexOf(messageData.username);
           if (index > -1) {
             connectedUsers.value.splice(index, 1);
           }
         }
+
         onStompMessageReceived(msg);
       }
     );
@@ -220,15 +216,12 @@ onMounted(async () => {
   store.dispatch("enterRoom");
   console.log("Room ID in Room Component: ", props.roomId);
   currentRoomId.value = props.roomId;
-  // 檢查會話狀態
   try {
     const userInfoResponse = await axios.post(
       `${import.meta.env.VITE_HOST_URL}/user/me`
     );
-    // 如果請求成功，表示使用者已登錄，可以繼續載入群組房間訊息
     console.log("User info:", userInfoResponse.data);
 
-    // 這裡可以加入額外的邏輯，例如如果 userInfoResponse.data 為空，則判定為未登入
     if (
       !userInfoResponse.data ||
       Object.keys(userInfoResponse.data).length === 0
@@ -240,24 +233,19 @@ onMounted(async () => {
     router.push("/login");
   }
 
-  try {
-    const response = await axios.post(
-      `${import.meta.env.VITE_HOST_URL}/user/me`
-    );
-    // 'ADMIN' 有權限匯出聊天記錄
-    canExportChatHistory.value = response.data.authorities === "ADMIN";
-  } catch (error) {
-    console.error("Error fetching user info:", error);
-  }
-
   const userInfoStr = localStorage.getItem("userInfo");
   if (userInfoStr) {
-    userInfo.value = JSON.parse(userInfoStr); // 解析並存儲用戶信息
+    userInfo.value = JSON.parse(userInfoStr);
+    canExportChatHistory.value = userInfo.value.authorities.includes("ADMIN");
+    console.log("User info loaded from local storage:", userInfo.value);
+
+    connectStomp();
+    await loadMessages();
+  } else {
+    console.error("No user info found in local storage.");
+    router.push("/login");
   }
-  connectStomp();
-  await loadMessages();
 });
-// 組件卸載前執行
 onBeforeUnmount(() => {
   if (stompClient && isConnected) {
     if (stompSubscription) {
@@ -284,7 +272,7 @@ const connectStomp = () => {
       isConnected = true;
       console.log("Connected to STOMP!");
 
-      // 訂閱房間的訊息
+      // 订阅房间的消息
       stompClient.subscribe(`/topic/message/${props.roomId}`, (msg) => {
         const messageData = JSON.parse(msg.body);
         console.log("Received message: ", messageData);
@@ -337,21 +325,26 @@ const onStompMessageReceived = (msg) => {
   console.log("New message received:", msg);
   const messageData = JSON.parse(msg.body);
 
+  // 检查消息类型并相应地处理
   switch (messageData.type) {
     case "TEXT":
       messages.value.push(messageData);
       break;
     case "JOIN":
       messages.value.push(messageData);
-      fetchRoomUsers(props.roomId); // 刷新房间用户列表
+      fetchRoomUsers(props.roomId);
       break;
     case "LEAVE":
       messages.value.push(messageData);
-      const userIndex = roomUsers.value.findIndex(
-        (user) => user.username === messageData.username
-      );
-      if (userIndex !== -1) {
-        roomUsers.value.splice(userIndex, 1);
+      if (Array.isArray(roomUsers.value)) {
+        const userIndex = roomUsers.value.findIndex(
+          (user) => user.username === messageData.username
+        );
+        if (userIndex !== -1) {
+          roomUsers.value.splice(userIndex, 1);
+        }
+      } else {
+        console.error("roomUsers.value is not an array:", roomUsers.value);
       }
       break;
     default:
@@ -428,13 +421,13 @@ const joinRoom = async (roomId) => {
   }
   messages.value = [];
 
-  // 重新載入新房間的訊息
+  // 重新加载新房间的消息
   await loadMessages(roomId);
 
-  // 取得新房間的使用者列表
+  // 获取新房间的用户列表
   await fetchRoomUsers(roomId);
 
-  // 重新接STOMP並訂閱新房間的主題
+  // 重新连接STOMP并订阅新房间的主题
   reconnectStompAndSubscribe(roomId);
 
   const joinMessage = {
@@ -456,7 +449,7 @@ const joinRoom = async (roomId) => {
     console.error("加入新房間時發生錯誤", error);
   }
 
-  await nextTick(); // 等待 Vue 更新 DOM
+  await nextTick(); // 等待 Vue 更新 DOM 或状态
 
   await fetchRoomUsers(roomId); // 獲取房間內的用戶列表
 };
@@ -496,7 +489,7 @@ const leaveRoom = async (roomId) => {
     console.error("離開房間時發生錯誤", error);
   }
 
-  await nextTick(); // 等待 Vue 更新 DOM
+  await nextTick(); // 等待 Vue 更新 DOM 或状态
 
   await fetchRoomUsers(roomId); // 更新房間內的用戶列表
 
@@ -504,7 +497,6 @@ const leaveRoom = async (roomId) => {
   emit("roomLeft");
 };
 
-// 重連機制
 const attemptReconnect = () => {
   if (!stompClient) {
     stompClient = Stomp.over(new SockJS(SOCKET_URL));
@@ -516,15 +508,16 @@ const attemptReconnect = () => {
     (frame) => {
       isConnected = true;
       console.log("Reconnected to STOMP server.");
+      // Retry sending the leave message or any other pending actions here
     },
     (error) => {
       isConnected = false;
       console.error("Failed to reconnect to STOMP server:", error);
+      // Handle reconnection failure (e.g., retry after a delay)
     }
   );
 };
 
-// 把方法給其他元件使用
 defineExpose({
   joinRoom,
   leaveRoom,
@@ -548,7 +541,6 @@ const loadMessages = async (roomId) => {
   }
 };
 
-// 取得聊天室內用戶
 const fetchRoomUsers = async (roomId) => {
   try {
     const response = await axios.post(
@@ -561,7 +553,6 @@ const fetchRoomUsers = async (roomId) => {
   }
 };
 
-// 會出聊天記錄
 const exportChatHistory = async () => {
   console.log(`Exporting chat history for room ID: ${props.roomId}`);
 

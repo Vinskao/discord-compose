@@ -48,11 +48,10 @@ const username = userInfo ? userInfo.username : null;
 
 const props = defineProps({
   groupId: Number,
-  onLeave: Function, // 接收一個名為 onLeave 的函數作為 prop
+  onLeave: Function, // 接收一个名为 onLeave 的函数作为 prop
 });
 
 onBeforeRouteLeave((to, from) => {
-  // 當導航離開當前路由執行
   deselectGroup();
 });
 
@@ -92,7 +91,6 @@ const checkUserRooms = async () => {
         username: username,
       }
     );
-    // 如果返回的房間列表為空，顯示返回按鈕
     showBackButton.value = response.data.length === 0;
   } catch (error) {
     console.error("Failed to fetch user rooms:", error);
@@ -101,7 +99,6 @@ const checkUserRooms = async () => {
   }
 };
 
-// 檢查使用者會話的函數
 const checkSession = async () => {
   try {
     const userInfoResponse = await axios.post(
@@ -185,7 +182,7 @@ const deselectGroup = async () => {
       console.error("Failed to remove user from rooms:", error);
     }
 
-    // 離開群組的邏輯
+    // 离开群组的逻辑
     try {
       await axios.post(
         `${import.meta.env.VITE_HOST_URL}/user-to-group/remove`,

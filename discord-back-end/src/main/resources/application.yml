@@ -13,9 +13,16 @@ spring:
   security:
     user:
       password: wawi247525
-
-#logging:
-#  level.org.springframework.security: DEBUG
+logging:
+  level:
+    root: INFO # Set the default logging level to INFO for all packages
+    org.springframework.security: DEBUG # Detailed logging for Spring Security
+    org.springframework.web: DEBUG # Detailed logging for Spring Web activities
+    org.springframework.data: DEBUG # Detailed logging for Spring Data
+    com.mli.discord: DEBUG # Replace 'com.mli.discord' with your base package name for detailed application-specific logs
+    org.mybatis.spring: DEBUG # Detailed logging for MyBatis-Spring integration
+    org.springframework.transaction: DEBUG # Detailed logging for transaction management
+    org.springframework.boot.autoconfigure: DEBUG # Detailed logging for auto-configuration classes
 
 springdoc:
   api-docs:
@@ -24,7 +31,7 @@ springdoc:
     persistAuthorization: true
 
 server:
-  port: 8088
+  port: 8080
   servlet:
     session:
       cookie:

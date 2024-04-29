@@ -1,4 +1,4 @@
-package com.mli.discord.core.Interceptor;
+package com.mli.discord.core.interceptor;
 
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;

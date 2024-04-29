@@ -31,7 +31,7 @@ init-db.sql 裡面放資料庫一啟動就想要建立的表跟插入的資料�
 
 ### docker-compose
 
-此檔案負責所有容器啟動的總設定，他可以連結到個別容器的 Dockerfile 去值行裡面的詳細設定，寫完此檔案，在根目錄執行：
+此檔案負責所有容器啟動的總設定，他可以連結到個別容器的 Dockerfile 去 run 裡面的詳細設定，寫完此檔案，在根目錄執行：
 
 ```bash
 docker-compose up
@@ -42,6 +42,14 @@ docker-compose up
 ```bash
 docker compose up --build
 ```
+
+如果只想要重新建立後端的鏡像：
+
+```bash
+docker-compose up --no-deps --build discord_backend
+```
+
+--no-deps：不啟動服務的依賴項，也就是只啟動你指定的服務。
 
 就可以一次啟動整個服務。但是因為是同時啟動，如果有資料庫要先完成，後端再插入初始資料的需求，就可能在後端插入資料時資料庫還沒建好。所以才有以下這個檔案的出現。
 

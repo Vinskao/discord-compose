@@ -1,0 +1,23 @@
+# PersistentVolume (PV) 提供具體的存儲資源
+# PV 是一個由管理員預先配置的儲存區塊，它在 Kubernetes 集群中是一個獨立的資源。PV 可以看作是集群中的一塊硬碟，它具有特定的大小和存取模式，並且與底層的儲存基礎設施（如NFS伺服器、iSCSI 或雲端存儲服務等）相連接。PV 的生命週期獨立於使用它的個別 Pod，意味著即使使用它的 Pod 被刪除，PV 仍然存在。
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sql-edge-pv # PV的名稱，用於識別
+spec:
+  capacity:
+    storage: 300Mi # 存儲容量設定為300Mi
+  volumeMode: Filesystem # 存儲模式為文件系統
+  accessModes:
+    - ReadWriteOnce # 設定為單節點讀寫模式
+  persistentVolumeReclaimPolicy: Retain # 刪除PVC後，PV資源保留不刪除
+  local:
+    path: "/Users/vinskao/data/sql-edge" # 存儲的實際路徑
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - docker-desktop # 指定只有特定節點可用這個PV

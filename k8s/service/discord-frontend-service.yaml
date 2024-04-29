@@ -1,0 +1,12 @@
+# Service 定義，為前端提供網絡訪問
+apiVersion: v1
+kind: Service
+metadata:
+  name: discord-frontend # 服務名稱
+spec:
+  type: ClusterIP # 使用 ClusterIP 類型，僅在集群內部提供訪問
+  ports:
+    - port: 8090 # 服務端口
+      targetPort: 8090 # 映射到的容器端口
+  selector:
+    app: discord-frontend # 選擇連接的 Pod

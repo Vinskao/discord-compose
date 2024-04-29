@@ -39,6 +39,8 @@ public class SecurityQuestionController {
     @Operation(summary = "添加安全问题")
     @PostMapping("/add-security-question")
     public ResponseEntity<String> addSecurityQuestion(@RequestBody SecurityQuestion securityQuestion) {
+        logger.info("securityQuestion: {}", securityQuestion);
+
         try {
             Integer result = securityQuestionService.addSecurityQuestion(securityQuestion);
             if (result > 0) {
@@ -63,6 +65,7 @@ public class SecurityQuestionController {
     @Operation(summary = "修改安全問題")
     @PostMapping("/modify-security-question")
     public ResponseEntity<String> modifySecurityQuestion(@RequestBody SecurityQuestion securityQuestion) {
+        logger.info("securityQuestion: {}", securityQuestion);
         try {
             Integer result = securityQuestionService.modifySecurityQuestion(securityQuestion);
             if (result > 0) {
@@ -87,6 +90,8 @@ public class SecurityQuestionController {
     @Operation(summary = "獲取安全問題")
     @PostMapping("/get-question")
     public ResponseEntity<String> getQuestionByUsername(@RequestBody UsernameDTO usernameDTO) {
+        logger.info("usernameDTO: {}", usernameDTO);
+
         String question = securityQuestionService.getQuestionByUsername(usernameDTO.getUsername());
         if (question != null) {
             return ResponseEntity.ok(question);
@@ -104,6 +109,8 @@ public class SecurityQuestionController {
     @Operation(summary = "驗證安全問題答案")
     @PostMapping("/verify-answer")
     public ResponseEntity<Boolean> verifyAnswer(@RequestBody SecurityQuestion securityQuestion) {
+        logger.info("securityQuestion: {}", securityQuestion);
+
         boolean isCorrect = securityQuestionService.verifyAnswer(securityQuestion);
         return ResponseEntity.ok(isCorrect);
     }

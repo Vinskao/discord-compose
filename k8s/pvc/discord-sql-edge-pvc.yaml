@@ -1,0 +1,13 @@
+# PersistentVolumeClaim (PVC) 請求存儲資源
+# PVC 是用戶申請儲存資源的方式，它讓 Pod 可以請求特定大小和存取模式的儲存空間。PVC 使得用戶不需要知道底層的儲存基礎設施的複雜性，只需要指定所需的儲存容量和存取權限。一旦 PVC 被創建，它會嘗試匹配一個合適的 PV。
+# 匹配過程：當一個 PVC 被創建時，Kubernetes 的儲存系統會尋找一個符合該 PVC 要求（存取模式、儲存容量等）的現有 PV。如果找到匹配的 PV，PVC 會與此 PV 綁定，之後就不能與其他 PVC 綁定。如果沒有現有的 PV 匹配 PVC 的要求，則 PVC 會一直處於未綁定狀態，直到有符合的 PV 被創建或成為可用。
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sql-edge-pvc # PVC 名稱
+spec:
+  accessModes:
+    - ReadWriteOnce # 讀寫模式
+  resources:
+    requests:
+      storage: 300Mi # 請求的存儲大小

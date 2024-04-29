@@ -1,11 +1,10 @@
 package com.mli.discord.module.login.dao;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import javax.annotation.PostConstruct;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Repository;
@@ -23,8 +22,6 @@ import com.mli.discord.module.login.model.User;
 
 @Repository
 public class UserRepository {
-    private static final Logger log = LoggerFactory.getLogger(UserRepository.class);
-
     @Autowired
     private UserDAO userDAO;
 
@@ -48,8 +45,6 @@ public class UserRepository {
      */
     @PostConstruct
     private void init() {
-        log.info("Initializing users...");
-
         // 定义要初始化的用户信息
         LocalDateTime randomBirthday1 = LocalDateTime.of(1990, 5, 24, 12, 0);
         LocalDateTime randomBirthday2 = LocalDateTime.of(1992, 8, 15, 12, 0);
@@ -66,16 +61,14 @@ public class UserRepository {
 
     private void checkAndCreateUser(String username, String password, String authority, LocalDateTime birthday,
             String interests) {
-        try {
-            User existingUser = userDAO.findByUsername(username);
-            if (existingUser == null) {
-                User newUser = new User(password, username, authority, birthday, interests);
-                encodePasswords(newUser);
-                userDAO.insertUser(newUser);
-                log.info("User created: {}", username);
-            }
-        } catch (Exception e) {
-            log.error("Error creating user: {}", username, e);
+        // 检查数据库中是否已存在该用户名
+        Optional<User> existingUser = userDAO.findByUsername(username);
+
+        // 如果用户不存在，则创建新用户并加密密码
+        if (existingUser == null) {
+            User newUser = new User(password, username, authority, birthday, interests);
+            encodePasswords(newUser);
+            userDAO.insertUser(newUser);
         }
     }
 

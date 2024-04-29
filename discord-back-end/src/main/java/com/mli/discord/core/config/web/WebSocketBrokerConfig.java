@@ -1,5 +1,7 @@
 package com.mli.discord.core.config.web;
 
+import java.security.Principal;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -10,6 +12,8 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
+import org.springframework.http.server.ServerHttpRequest;
+import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -19,14 +23,19 @@ import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
+import org.springframework.web.socket.server.support.HttpSessionHandshakeInterceptor;
 
-import com.mli.discord.core.Interceptor.CustomHttpSessionHandshakeInterceptor;
 import com.mli.discord.module.message.model.Message;
+
 /**
  * WebSocket消息傳遞配置，提供了基於WebSocket的STOMP消息傳遞功能的配置。
  *
@@ -40,15 +49,13 @@ public class WebSocketBrokerConfig implements WebSocketMessageBrokerConfigurer, 
 
     private Set<String> connectedUsernames = ConcurrentHashMap.newKeySet();
     private ApplicationContext applicationContext;
-    // private Map<String, Set<String>> roomUsernamesMap = new
-    // ConcurrentHashMap<>();
-    
+
     @MessageMapping("/get-online-users")
     @SendTo("/topic/online-users")
     public Set<String> getOnlineUsers() {
         return connectedUsernames;
     }
-    
+
     /**
      * 註冊STOMP端點。
      *
@@ -56,11 +63,29 @@ public class WebSocketBrokerConfig implements WebSocketMessageBrokerConfigurer, 
      */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        String allowedOrigin = System.getenv("CORS_ALLOWED_ORIGIN");
+        if (allowedOrigin == null || allowedOrigin.isEmpty()) {
+            logger.error("CORS_ALLOWED_ORIGIN is not set! Defaulting to localhost.");
+            allowedOrigin = "http://localhost:8090";
+        }
+
         registry.addEndpoint("/ws-message")
-                .setAllowedOrigins("http://localhost:8090")
+                .setAllowedOrigins(allowedOrigin)
                 .withSockJS()
-                .setInterceptors(new CustomHttpSessionHandshakeInterceptor());
+                .setInterceptors(new HttpSessionHandshakeInterceptor() {
+                    @Override
+                    public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
+                            WebSocketHandler wsHandler, Map<String, Object> attributes) throws Exception {
+                        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                        if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
+                            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+                            attributes.put("username", userDetails.getUsername());
+                        }
+                        return true;
+                    }
+                });
     }
+
     /**
      * 配置消息代理。
      *
@@ -82,6 +107,7 @@ public class WebSocketBrokerConfig implements WebSocketMessageBrokerConfigurer, 
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
     }
+
     /**
      * 處理會話連接事件。
      *
@@ -89,32 +115,18 @@ public class WebSocketBrokerConfig implements WebSocketMessageBrokerConfigurer, 
      */
     @EventListener
     public void handleSessionConnected(SessionConnectEvent event) {
-        String username = event.getUser().getName();
-        connectedUsernames.add(username);
-        logger.info("{} connected", username);
+        Principal principal = event.getUser();
+        if (principal != null) {
+            String username = principal.getName();
+            connectedUsernames.add(username);
+            logger.info("{} connected", username);
+        } else {
+            logger.warn("A connection attempt without authentication");
+            return;
+        }
         broadcastUpdatedUserList();
     }
 
-    // @EventListener
-    // public void handleSessionConnected(SessionConnectEvent event) {
-    // StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
-    // String username = sha.getUser().getName();
-    // Object roomIdObj = sha.getSessionAttributes().get("roomId");
-    //
-    // // 检查 roomId 是否存在
-    // if (roomIdObj == null) {
-    // logger.error("Room ID is null for user: {}", username);
-    // return; // 直接返回，不执行后续操作
-    // }
-    //
-    // String roomId = roomIdObj.toString();
-    // // 现在 roomId 确认不为 null，可以继续使用
-    // roomUsernamesMap.computeIfAbsent(roomId, k ->
-    // ConcurrentHashMap.newKeySet()).add(username);
-    // logger.info("{} connected to room {}", username, roomId);
-    // broadcastUpdatedUserList(roomId);
-    // }
-    
     /**
      * 處理會話斷開事件。
      *
@@ -127,25 +139,6 @@ public class WebSocketBrokerConfig implements WebSocketMessageBrokerConfigurer, 
         logger.info("{} disconnected", username);
         broadcastUpdatedUserList();
     }
-    //
-    // @EventListener
-    // public void handleSessionDisconnect(SessionDisconnectEvent event) {
-    // StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
-    // String username = sha.getUser().getName();
-    // String roomId = sha.getSessionAttributes().get("roomId").toString(); // 同样，假设
-    // roomId 已经存储在会话属性中
-    //
-    // Set<String> usernamesInRoom = roomUsernamesMap.getOrDefault(roomId,
-    // ConcurrentHashMap.newKeySet());
-    // usernamesInRoom.remove(username);
-    // if (usernamesInRoom.isEmpty()) {
-    // roomUsernamesMap.remove(roomId);
-    // }
-    //
-    // logger.info("{} disconnected from room {}", username, roomId);
-    //
-    // broadcastUpdatedUserList(roomId);
-    // }
 
     /**
      * 廣播更新後的用戶列表。
@@ -164,21 +157,6 @@ public class WebSocketBrokerConfig implements WebSocketMessageBrokerConfigurer, 
         }
     }
 
-    // private void broadcastUpdatedUserList(String roomId) {
-    // Set<String> usernamesInRoom = roomUsernamesMap.getOrDefault(roomId,
-    // ConcurrentHashMap.newKeySet());
-    //
-    // SimpMessagingTemplate template =
-    // applicationContext.getBean(SimpMessagingTemplate.class);
-    // if (template != null) {
-    // logger.info("Broadcasting connected usernames in room {}: {}", roomId,
-    // usernamesInRoom);
-    // template.convertAndSend("/topic/userList/" + roomId, usernamesInRoom);
-    // logger.info("Broadcasted in room {}: {}", roomId, usernamesInRoom);
-    //
-    // }
-    // }
-    
     /**
      * 在STOMP連接建立時，讀取STOMP幀的headers，並將相關信息保存到會話屬性中。
      *
@@ -201,20 +179,4 @@ public class WebSocketBrokerConfig implements WebSocketMessageBrokerConfigurer, 
             }
         });
     }
-    // @Override
-    // public void configureClientInboundChannel(ChannelRegistration registration) {
-    // registration.interceptors(new ChannelInterceptor() {
-    // @Override
-    // public Message<?> preSend(Message<?> message, MessageChannel channel) {
-    // StompHeaderAccessor accessor =
-    // MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-    // if (StompCommand.SUBSCRIBE.equals(accessor.getCommand()) ||
-    // StompCommand.UNSUBSCRIBE.equals(accessor.getCommand())) {
-    // String destination = accessor.getDestination();
-    // System.out.println(accessor.getCommand() + " to: " + destination);
-    // }
-    // return message;
-    // }
-    // });
-    // }
 }

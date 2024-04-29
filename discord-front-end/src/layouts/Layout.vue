@@ -18,24 +18,21 @@ onMounted(() => {
   checkUserAuth();
 });
 
-// 檢查使用者身份驗證
 const checkUserAuth = async () => {
   try {
     await axios.post(`${import.meta.env.VITE_HOST_URL}/user/me`);
-    userLoggedIn.value = true; // Hide login button if user is authenticated
+    userLoggedIn.value = true;
   } catch (error) {
     if (error.response && error.response.status === 401) {
-      userLoggedIn.value = false; // Show login button if no active session
+      userLoggedIn.value = false;
     } else {
       console.error("Error fetching user details:", error);
     }
   }
 };
-
-// 登出函式
 const logout = async () => {
   store.dispatch("disconnectStomp");
-  const username = JSON.parse(localStorage.getItem("userInfo")).username; // 获取当前用户名
+  const username = JSON.parse(localStorage.getItem("userInfo")).username;
   try {
     await axios.post(
       `${import.meta.env.VITE_HOST_URL}/user-to-room/delete-all-by-username`,
@@ -49,7 +46,7 @@ const logout = async () => {
     console.error("中介表中已經沒有此使用者:", error);
   }
 
-  // 執行登出邏輯
+  // 执行登出逻辑
   try {
     await axios.post(`${import.meta.env.VITE_HOST_URL}/user/logout`);
     await Swal.fire({
@@ -64,7 +61,7 @@ const logout = async () => {
     localStorage.removeItem("userInfo");
     sessionStorage.removeItem("bypassAuth");
   } catch (error) {
-    console.error("登出过程中出现错误:", error);
+    console.error("登出時出現錯誤:", error);
     Swal.fire({
       icon: "error",
       title: "Oops...",

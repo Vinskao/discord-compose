@@ -1,0 +1,41 @@
+# Deployment 定義，用來部署 SQL Edge 容器
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sql-edge-deployment # Deployment 的名稱
+spec:
+  replicas: 1 # 創建1個副本
+  selector:
+    matchLabels:
+      app: sql-edge # 根據標籤選擇 Pod
+  template:
+    metadata:
+      labels:
+        app: sql-edge # 給 Pod 指定標籤
+    spec:
+      containers:
+        - name: sql-edge-container # 容器名稱
+          image: mcr.microsoft.com/azure-sql-edge:latest # 使用的映像檔
+          env: # 環境變數
+            - name: ACCEPT_EULA
+              value: "Y" # 接受用戶協議
+            - name: SA_PASSWORD
+              value: "Wawi247525=" # SA 用戶的密碼
+            - name: MSSQL_COLLATION
+              value: "Chinese_Taiwan_Stroke_CI_AI" # 設定排序規則
+            - name: TZ
+              value: "Asia/Taipei" # 設定時區
+          ports:
+            - containerPort: 1433 # 容器對外的端口
+          volumeMounts:
+            - name: sql-edge-volume # 掛載的卷名稱
+              mountPath: /var/opt/mssql # 掛載路徑
+              subPath: sql-data # 掛載子路徑
+      volumes:
+        - name: sql-edge-volume # 卷名稱
+          persistentVolumeClaim:
+            claimName: sql-edge-pvc # 持久卷聲明的名稱
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule" # 設定容忍性，不調度至特定節點
