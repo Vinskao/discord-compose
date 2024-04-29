@@ -57,7 +57,7 @@ public class WebSocketBrokerConfig implements WebSocketMessageBrokerConfigurer, 
     }
 
     /**
-     * 註冊STOMP端點。
+     * 註冊STOMP端點。設置了一個 WebSocket 端點，客戶端可以通過這個端點與伺服器建立連接
      *
      * @param registry STOMP端點註冊器
      */
@@ -68,14 +68,17 @@ public class WebSocketBrokerConfig implements WebSocketMessageBrokerConfigurer, 
             logger.error("CORS_ALLOWED_ORIGIN is not set! Defaulting to localhost.");
             allowedOrigin = "http://localhost:8090";
         }
-
+        /// ws-message 是設置給前端連接的 WebSocket 端點。這是 STOMP 通信的接入點
         registry.addEndpoint("/ws-message")
                 .setAllowedOrigins(allowedOrigin)
+                // 通過 .withSockJS() 添加 SockJS 支持，這有助於在不支持原生 WebSocket 的瀏覽器中依然能使用類似 WebSocket 的通訊
                 .withSockJS()
+                // 使用 HttpSessionHandshakeInterceptor 在握手階段可以插入自定義邏輯
                 .setInterceptors(new HttpSessionHandshakeInterceptor() {
                     @Override
                     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
                             WebSocketHandler wsHandler, Map<String, Object> attributes) throws Exception {
+                        // 驗證用戶身份並將用戶名添加到 WebSocket 會話的屬性中
                         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
                         if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
                             UserDetails userDetails = (UserDetails) authentication.getPrincipal();

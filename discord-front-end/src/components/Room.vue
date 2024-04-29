@@ -272,12 +272,10 @@ const connectStomp = () => {
       isConnected = true;
       console.log("Connected to STOMP!");
 
-      // 订阅房间的消息
       stompClient.subscribe(`/topic/message/${props.roomId}`, (msg) => {
         const messageData = JSON.parse(msg.body);
         console.log("Received message: ", messageData);
 
-        // 根据消息类型处理消息
         switch (messageData.type) {
           case "TEXT":
           case "JOIN":
@@ -288,23 +286,19 @@ const connectStomp = () => {
             console.warn("Received unknown message type:", messageData.type);
         }
 
-        // 如果是加入或离开消息，则刷新房间用户列表
         if (messageData.type === "JOIN" || messageData.type === "LEAVE") {
           fetchRoomUsers(props.roomId);
         }
       });
 
-      // 订阅房间的用户列表更新
       stompClient.subscribe("/topic/message", (message) => {
         const messageData = JSON.parse(message.body);
         console.log("Received message from /topic/message:", messageData);
         if (messageData.type === "USER_LIST") {
-          // 将在线用户列表保存到全局状态中
           store.commit("updateOnlineUsers", messageData.message.split(","));
         }
       });
 
-      // 监听 WebSocket 连接关闭事件
       socket.onclose = () => {
         console.log("WebSocket connection closed");
         if (props.roomId && userInfo.value) {

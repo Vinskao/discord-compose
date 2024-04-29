@@ -90,43 +90,7 @@ const handleRoomLeft = () => {
   selectedRoomId.value = null;
   emit("roomDeselected");
 };
-// const selectRoom = async (id) => {
-//   console.log("Selected Room ID: ", id);
-//   const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-//   const currentUsername = userInfo.username;
 
-//   // 连接 WebSocket
-//   stompClient.connect({}, () => {
-//     // 请求当前在线用户列表
-//     stompClient.send("/app/get-online-users", {}, {});
-
-//     // 订阅在线用户列表主题
-//     stompClient.subscribe('/topic/online-users', (message) => {
-//       const onlineUsers = JSON.parse(message.body);
-//       console.log("Online Users:", onlineUsers);
-
-//       // 检查当前用户是否已在线
-//       if (onlineUsers.includes(currentUsername)) {
-//         Swal.fire("提示", "您已在聊天室中，无法加入。", "warning");
-//       } else {
-//         // 用户不在线，进行房间选择逻辑
-//         selectedRoomId.value = id;
-
-//         // 如果 Room 组件已加载且 joinRoom 方法可用，则加入新房间
-//         if (roomComponent.value && typeof roomComponent.value.joinRoom === "function") {
-//           roomComponent.value.joinRoom(id);
-//         } else {
-//           console.error("joinRoom 方法不可用");
-//         }
-
-//         // 触发 roomSelected 事件
-//         emit("roomSelected");
-//       }
-//     });
-//   }, (error) => {
-//     console.error("WebSocket connection error: ", error);
-//   });
-// };
 const selectRoom = async (id) => {
   console.log("Selected Room ID: ", id);
 

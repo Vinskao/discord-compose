@@ -23,6 +23,13 @@ import com.mli.discord.module.login.service.JwtService;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * @Author D3031104
+ * 
+ * @Version 1.0
+ *          JwtAuthenticationFilter負責攔截HTTP請求並
+ *          從授權標頭中提取 JWT 令牌以對使用者進行身份驗證。
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -33,6 +40,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private UserDetailsService userDetailsService;
 
+    /**
+     * 這個方法實現了JWT身份驗證的內部過濾邏輯。
+     * 它檢查'Authorization'標頭中是否存在JWT，如果有效，則在安全上下文中設置身份驗證。
+     *
+     * @param request     要過濾的請求。
+     * @param response    與請求關聯的回應。
+     * @param filterChain 如果處理應繼續，則應將請求傳遞到的過濾器鏈。
+     * @throws ServletException 如果無法處理請求。
+     * @throws IOException      如果發生輸入或輸出異常。
+     */
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,

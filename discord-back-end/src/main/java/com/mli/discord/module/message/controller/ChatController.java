@@ -61,13 +61,13 @@ public class ChatController {
 	public ResponseEntity<Void> sendMessage(@RequestBody MessageDTO textMessageDTO) {
 
 		// Log received message
-		System.out.println("Received message: " + textMessageDTO.getMessage());
+		logger.debug("Received message: {}", textMessageDTO.getMessage());
 
 		// Broadcast message
 		template.convertAndSend("/topic/message/" + textMessageDTO.getRoomId(), textMessageDTO);
 
 		// Log after broadcasting
-		System.out.println("(send) Message broadcasted to /topic/message");
+		logger.debug("(send) Message broadcasted to /topic/message");
 
 		return new ResponseEntity<>(HttpStatus.OK);
 	}
@@ -160,12 +160,12 @@ public class ChatController {
 	public ResponseEntity<byte[]> exportChatHistory(@RequestBody RoomIdDTO roomIdDTO) {
 		logger.info("Exporting chat history for room ID: {}", roomIdDTO.getRoomId());
 
-		// 创建新的Excel工作簿
+		// 創建新的Excel工作簿
 		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
 			XSSFSheet sheet = workbook.createSheet("Chat History");
 			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-			// 创建标题行
+			// 創建header
 			Row headerRow = sheet.createRow(0);
 			String[] headerStrings = { "Type", "Username", "Time", "Message" };
 			for (int i = 0; i < headerStrings.length; i++) {
@@ -173,7 +173,7 @@ public class ChatController {
 				cell.setCellValue(headerStrings[i]);
 			}
 
-			// 填充数据
+			// 填充data
 			List<Message> messages = messageService.getMessagesByRoomId(roomIdDTO.getRoomId());
 			int rowNum = 1;
 			for (Message msg : messages) {
@@ -184,11 +184,9 @@ public class ChatController {
 				row.createCell(3).setCellValue(msg.getMessage());
 			}
 
-			// 将工作簿写入到字节输出流
 			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 			workbook.write(outputStream);
 
-			// 设置响应头信息
 			HttpHeaders headers = new HttpHeaders();
 			headers.setContentDisposition(
 					ContentDisposition.builder("attachment").filename("chat_history.xlsx").build());
