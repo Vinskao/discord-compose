@@ -91,12 +91,18 @@ public class SecurityQuestionController {
     @PostMapping("/get-question")
     public ResponseEntity<String> getQuestionByUsername(@RequestBody UsernameDTO usernameDTO) {
         logger.info("usernameDTO: {}", usernameDTO);
-
-        String question = securityQuestionService.getQuestionByUsername(usernameDTO.getUsername());
-        if (question != null) {
-            return ResponseEntity.ok(question);
-        } else {
-            return ResponseEntity.notFound().build();
+        try {
+            String question = securityQuestionService.getQuestionByUsername(usernameDTO.getUsername());
+            if (question != null) {
+                return ResponseEntity.ok(question);
+            } else {
+                // 當用戶名找不到對應的安全問題時，返回一個具體的錯誤訊息
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("無此使用者，請確認用戶名結尾@mli.com");
+            }
+        } catch (Exception e) {
+            // 處理其他可能的異常情況
+            logger.error("處理請求時出錯：", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("伺服器錯誤，請稍後再試");
         }
     }
 

@@ -134,7 +134,7 @@ window.addEventListener("beforeunload", () => {
       type: "LEAVE",
     };
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/app/message", false); // 第三个参数 false 表示同步请求
+    xhr.open("POST", "/app/message", false);
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.send(JSON.stringify(leaveMessage));
   }

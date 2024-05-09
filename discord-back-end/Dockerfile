@@ -15,6 +15,9 @@ RUN mvn clean package -DskipTests
 # 使用 OpenJDK 11 的輕量級基礎映像來運行構建好的應用
 FROM openjdk:11-jre-slim
 
+# 安裝 ping 工具
+RUN apt-get update && apt-get install -y iputils-ping
+
 # 從構建階段複製構建好的 JAR 應用到運行階段的容器內
 COPY --from=build /app/target/discord-0.0.1-SNAPSHOT.jar /discord.jar
 

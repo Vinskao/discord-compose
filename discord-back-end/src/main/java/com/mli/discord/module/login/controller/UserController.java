@@ -72,10 +72,12 @@ public class UserController {
     public ResponseEntity<AuthenticationResponse> login(@RequestBody LoginDTO loginDTO, HttpServletRequest request) {
         logger.info("Trying to login via UserController");
         try {
+            logger.info("starting login process");
             // Authenticate the login request
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginDTO.getUsername(), loginDTO.getPassword()));
             SecurityContextHolder.getContext().setAuthentication(authentication);
+            logger.info("setAuthentication completed");
 
             // Assuming userService.processSuccessfulAuthentication handles JWT creation
             ResponseEntity<AuthenticationResponse> response = userService
@@ -87,6 +89,8 @@ public class UserController {
             session.setAttribute("authorities", authentication.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
                     .collect(Collectors.joining(",")));
+
+            logger.info("Session ID created: " + session.getId());
 
             return response;
         } catch (AuthenticationException e) {
@@ -176,8 +180,6 @@ public class UserController {
     public ResponseEntity<?> getCurrentUserDetails() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated()) {
-            // Assuming the UserDetails or similar principal object has appropriate methods
-            // to fetch needed info
             Object principal = authentication.getPrincipal();
 
             if (principal instanceof UserDetails) {

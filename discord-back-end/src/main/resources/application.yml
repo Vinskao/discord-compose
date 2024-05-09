@@ -4,7 +4,8 @@ spring:
   datasource:
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
     # url: jdbc:sqlserver://172.27.36.106:1433;databaseName=discord;trustServerCertificate=true
-    url: ${DATASOURCE_URL:jdbc:sqlserver://sql_edge:1433;databaseName=discord;trustServerCertificate=true}
+    # url: ${DATASOURCE_URL:jdbc:sqlserver://sql_edge:1433;databaseName=discord;trustServerCertificate=true}
+    url: ${DATASOURCE_URL:jdbc:sqlserver://localhost:1433;databaseName=discord;trustServerCertificate=true}
     username: ${DATASOURCE_USERNAME:SA}
     password: ${DATASOURCE_PASSWORD:Wawi247525=}
   devtools:

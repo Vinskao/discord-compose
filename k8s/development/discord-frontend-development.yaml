@@ -20,4 +20,4 @@ spec:
             - containerPort: 8090 # 容器監聽的端口
           env:
             - name: VITE_HOST_URL
-              value: "http://localhost:30000" # 設定環境變數
+              value: "http://api.localhost"

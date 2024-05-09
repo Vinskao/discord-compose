@@ -22,6 +22,11 @@ window.$vueApp = app;
 app.use(ElementPlus, { locale: "zh-TW" }).use(router).use(store).mount("#app");
 
 axios.interceptors.request.use((request) => {
+  // 從 sessionStorage 獲取 token
+  const token = sessionStorage.getItem("authToken");
+  if (token) {
+    request.headers["Authorization"] = `Bearer ${token}`;
+  }
   console.log("Request Headers:", request.headers);
   return request;
 });

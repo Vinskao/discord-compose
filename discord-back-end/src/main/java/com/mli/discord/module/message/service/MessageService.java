@@ -3,6 +3,8 @@ package com.mli.discord.module.message.service;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +21,8 @@ import io.swagger.v3.oas.annotations.Operation;
  */
 @Service
 public class MessageService {
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
     @Autowired
     private MessageDAO messageDAO;
 
@@ -30,11 +34,18 @@ public class MessageService {
      */
     @Operation(summary = "保存訊息")
     public Message saveMessage(MessageDTO messageDTO) {
+        logger.info("username: {}", messageDTO.getUsername());
+        String username = messageDTO.getUsername();
+        // 檢查username是否已經包含"@"
+        if (!username.contains("@")) {
+            username += "@mli.com";
+        }
+
         Message message = new Message();
         message.setRoomId(messageDTO.getRoomId());
-        message.setUsername(messageDTO.getUsername());
+        message.setUsername(username);
         message.setMessage(messageDTO.getMessage());
-        message.setType(messageDTO.getType()); // 假设默认都是文本消息
+        message.setType(messageDTO.getType());
         message.setTime(LocalDateTime.now());
 
         messageDAO.insertMessage(message);

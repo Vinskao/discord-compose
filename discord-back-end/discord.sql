@@ -81,6 +81,15 @@ CREATE TABLE security_questions (
     FOREIGN KEY (username) REFERENCES users(username)
 );
 
+CREATE TABLE rsa_entity (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    username NVARCHAR(255) NOT NULL,
+    name NVARCHAR(255) NOT NULL UNIQUE,
+    pub NVARCHAR(MAX) NOT NULL,
+    signature NVARCHAR(MAX) NOT NULL,
+    data NVARCHAR(MAX) NOT NULL
+);
+
 
 INSERT INTO [group] (name) VALUES ('Group 1');
 INSERT INTO [group] (name) VALUES ('Group 2');

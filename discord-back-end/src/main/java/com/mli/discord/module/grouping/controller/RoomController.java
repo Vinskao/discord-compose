@@ -43,9 +43,12 @@ public class RoomController {
     @PostMapping("/find-all-rooms")
     @Operation(summary = "根據群組ID獲取所有房間")
     public ResponseEntity<?> getRoomsByGroupId(@RequestBody GroupIdDTO groupIdDTO) {
-
         try {
             List<Room> rooms = roomService.findAllRoomsByGroupId(groupIdDTO.getGroupId());
+            if (rooms.isEmpty()) {
+                // Specific message when no rooms are found
+                return ResponseEntity.ok("目前不需要重新列出房間");
+            }
             return ResponseEntity.ok(rooms);
         } catch (Exception e) {
             logger.error("無法根據提供的群組ID檢索房間：{}", groupIdDTO.getGroupId(), e);

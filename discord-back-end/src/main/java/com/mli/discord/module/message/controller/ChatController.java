@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
@@ -22,6 +21,9 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -113,27 +115,45 @@ public class ChatController {
 	 */
 	@Operation(summary = "處理從前端 STOMP 客戶端發送到 /app/message 的消息")
 	@MessageMapping("/message")
-	public void receiveAndBroadcastMessage(@Payload MessageDTO textMessageDTO,
-			SimpMessageHeaderAccessor headerAccessor) {
-		Map<String, Object> sessionAttributes = headerAccessor.getSessionAttributes();
-		if (sessionAttributes == null) {
-			logger.info("Session attributes are null");
+	public void receiveAndBroadcastMessage(@Payload MessageDTO messageDTO, SimpMessageHeaderAccessor headerAccessor) {
+		logger.info("receiveAndBroadcastMessage username: {}", messageDTO.getUsername());
+
+		// 從 headerAccessor 獲取 session ID
+		String sessionId = headerAccessor.getSessionId();
+		logger.info("Session ID: {}", sessionId);
+
+		// 從 STOMP 消息獲取 username
+		String usernameFromMessage = messageDTO.getUsername();
+
+		// 嘗試從 HttpSession 獲取 username
+		String usernameFromSession = (String) headerAccessor.getSessionAttributes().get("username");
+
+		// 最終使用的 username
+		String finalUsername = usernameFromMessage != null ? usernameFromMessage : usernameFromSession;
+
+		if (finalUsername == null || finalUsername.isEmpty()) {
+			logger.info("Username is missing in both STOMP message and session");
+			// 備案：從 /me API 獲取用戶信息
+			Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+			if (authentication != null && authentication.isAuthenticated()) {
+				UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+				finalUsername = userDetails.getUsername();
+				logger.info("Retrieved username from SecurityContextHolder: {}", finalUsername);
+			}
+		}
+
+		if (finalUsername == null) {
+			logger.info("Failed to retrieve username by any means");
 			return;
 		}
 
-		if (!sessionAttributes.containsKey("username")) {
-			logger.info("Username is not found in WebSocket session attributes.");
-			return;
-		}
+		logger.info("Received STOMP message from {}: {}", finalUsername, messageDTO.getMessage());
 
-		// 從sessionAttributes中獲取username，並處理它
-		String username = (String) sessionAttributes.get("username");
-		textMessageDTO.setUsername(username);
-		logger.info("Received STOMP message from {}: {}", username, textMessageDTO.getMessage());
-		Message message = messageService.saveMessage(textMessageDTO);
-		template.convertAndSend("/topic/message/" + textMessageDTO.getRoomId(), message);
-		logger.info("(message) STOMP Message broadcasted to /topic/message/" + textMessageDTO.getRoomId());
+		// 儲存和廣播消息
+		Message message = messageService.saveMessage(messageDTO);
+		template.convertAndSend("/topic/message/" + messageDTO.getRoomId(), message);
 
+		logger.info("(message) STOMP Message broadcasted to /topic/message/" + messageDTO.getRoomId());
 	}
 
 	/**

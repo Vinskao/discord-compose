@@ -88,9 +88,10 @@ public class UserToGroupController {
         try {
             int result = userToGroupService.deleteAllUserEntriesByUsername(usernameDTO.getUsername());
             if (result > 0) {
-                return ResponseEntity.ok().build();
+                return ResponseEntity.ok().build(); // 如果有數據被刪除，返回成功的回應
             } else {
-                return ResponseEntity.badRequest().body("Failed to delete user's group entries");
+                // 如果沒有數據被刪除，返回一個特定的訊息
+                return ResponseEntity.ok("目前已經沒有使用者在group中，無需進行刪除");
             }
         } catch (Exception e) {
             logger.error("發生錯誤: " + e.getMessage());

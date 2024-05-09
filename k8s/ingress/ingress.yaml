@@ -1,0 +1,39 @@
+# ingress.yaml
+apiVersion: networking.k8s.io/v1 # 使用 Kubernetes 網絡 API 版本 v1
+kind: Ingress # 資源類型是 Ingress
+metadata:
+  name: ingress # Ingress 資源的名稱
+  annotations:
+    # 通過設置 nginx.ingress.kubernetes.io/affinity: "cookie" 等，使得來自同一客戶端的請求會話（session）能夠始終被路由到同一後端 Pod，這對於維護 WebSocket 連接狀態非常重要。
+    # 通過 nginx.ingress.kubernetes.io/upgrade: "websocket" 和 nginx.ingress.kubernetes.io/connection: "upgrade"，確保 Nginx 能夠正確地將 HTTP 連接升級到 WebSocket。
+    nginx.ingress.kubernetes.io/affinity: "cookie" # 開啟基於 cookie 的親和性
+    nginx.ingress.kubernetes.io/session-cookie-name: "route" # 設置 cookie 名稱
+    nginx.ingress.kubernetes.io/session-cookie-hash: "sha1" # 使用 sha1 雜湊
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600" # 設置較長的超時時間
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/upgrade: "websocket" # 為 WebSocket 連接升級
+    nginx.ingress.kubernetes.io/connection: "upgrade"
+spec:
+  ingressClassName: nginx
+  rules: # 規則定義，用於處理進入的 HTTP 請求
+    - host: www.localhost
+      http:
+        paths:
+          - path: / # 捕捉所有以 '/' 開頭的路徑
+            # 任何到達集群的 HTTP 請求（假設沒有設置特定的域名，則為任何 http://<Cluster-IP>/ 形式的請求），都會被路由到 discord-frontend 服務的 8090 端口
+            pathType: Prefix # 路徑類型，'Prefix' 表示路徑前綴匹配
+            backend:
+              service:
+                name: discord-frontend # 指定請求應該轉發到的服務名稱
+                port:
+                  number: 8090
+    - host: api.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: discord-backend
+                port:
+                  number: 8080

@@ -35,8 +35,8 @@ public class JwtService {
 	// Token有效期限 (設定15分鐘過期)
 	private Long EXPIRATION_TIME = 60L * 60 * 1000; // 單位ms
 
-	// Token有效期限 (設定15分鐘過期)
-	private Long LOGOUT_EXPIRATION_TIME = 60L * 60 * 10; // 單位ms
+	// Token有效期限 (設定0.00025分鐘過期)
+	private Long LOGOUT_EXPIRATION_TIME = 60L * 1; // 單位ms
 
 	@Autowired
 	private JwtTokenDAO jwtTokenDAO;

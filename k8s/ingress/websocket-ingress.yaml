@@ -1,0 +1,24 @@
+# websocket-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: websocket-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "route"
+    nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
+    nginx.ingress.kubernetes.io/upgrade: "websocket"
+    nginx.ingress.kubernetes.io/connection: "upgrade"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: "api.localhost"
+      http:
+        paths:
+          - path: /ws-message
+            pathType: Prefix
+            backend:
+              service:
+                name: websocket-backend-service
+                port:
+                  number: 8080

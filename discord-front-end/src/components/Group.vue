@@ -54,15 +54,6 @@ onMounted(async () => {
     console.error("用戶未登錄或session已過期:", error);
     router.push("/login");
   }
-
-  try {
-    const response = await axios.post(
-      `${import.meta.env.VITE_HOST_URL}/room/find-all-rooms`
-    );
-    rooms.value = response.data;
-  } catch (error) {
-    console.error("無法獲取聊天室:", error);
-  }
 });
 
 // 當 groupId 改變時，獲取相應的房間

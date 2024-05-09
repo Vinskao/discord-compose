@@ -17,7 +17,7 @@
 
     以啟動 Spring Boot
 
-5.  打開 http://localhost:8088/swagger-ui/index.html
+5.  打開 http://api.localhost/swagger-ui/index.html
 
     以查看 api 狀態
 

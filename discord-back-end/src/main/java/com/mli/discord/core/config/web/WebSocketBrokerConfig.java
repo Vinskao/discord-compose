@@ -1,9 +1,10 @@
 package com.mli.discord.core.config.web;
 
 import java.security.Principal;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import javax.servlet.http.HttpServletRequest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,8 +13,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
-import org.springframework.http.server.ServerHttpRequest;
-import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -23,17 +22,18 @@ import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.socket.WebSocketHandler;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
-import org.springframework.web.socket.server.support.HttpSessionHandshakeInterceptor;
 
+import com.mli.discord.core.interceptor.CustomHttpSessionHandshakeInterceptor;
 import com.mli.discord.module.message.model.Message;
 
 /**
@@ -45,7 +45,7 @@ import com.mli.discord.module.message.model.Message;
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketBrokerConfig implements WebSocketMessageBrokerConfigurer, ApplicationContextAware {
-    private static final Logger logger = LoggerFactory.getLogger(WebSocketBrokerConfig.class);
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private Set<String> connectedUsernames = ConcurrentHashMap.newKeySet();
     private ApplicationContext applicationContext;
@@ -63,30 +63,25 @@ public class WebSocketBrokerConfig implements WebSocketMessageBrokerConfigurer, 
      */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        String allowedOrigin = System.getenv("CORS_ALLOWED_ORIGIN");
-        if (allowedOrigin == null || allowedOrigin.isEmpty()) {
-            logger.error("CORS_ALLOWED_ORIGIN is not set! Defaulting to localhost.");
-            allowedOrigin = "http://localhost:8090";
-        }
+        String[] originPatterns = { "http://*.localhost", "https://*.localhost", "http://localhost:8091",
+                "http://localhost:8090" };
         /// ws-message 是設置給前端連接的 WebSocket 端點。這是 STOMP 通信的接入點
         registry.addEndpoint("/ws-message")
-                .setAllowedOrigins(allowedOrigin)
+                .setAllowedOriginPatterns(originPatterns)
                 // 通過 .withSockJS() 添加 SockJS 支持，這有助於在不支持原生 WebSocket 的瀏覽器中依然能使用類似 WebSocket 的通訊
                 .withSockJS()
                 // 使用 HttpSessionHandshakeInterceptor 在握手階段可以插入自定義邏輯
-                .setInterceptors(new HttpSessionHandshakeInterceptor() {
-                    @Override
-                    public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
-                            WebSocketHandler wsHandler, Map<String, Object> attributes) throws Exception {
-                        // 驗證用戶身份並將用戶名添加到 WebSocket 會話的屬性中
-                        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-                        if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
-                            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-                            attributes.put("username", userDetails.getUsername());
-                        }
-                        return true;
-                    }
-                });
+                .setInterceptors(new CustomHttpSessionHandshakeInterceptor());
+
+        // 为了确保在登录时username正确设置在会话中并且能够被WebSocket握手拦截器使用，你应该检查以下几个关键点：
+        // 登录时会话创建：确保在登录成功后，HTTP会话被创建（如果之前不存在的话）。这一点在你的login方法中通过request.getSession(true)确保了新会话的创建。
+        // 会话ID保持一致性：客户端在建立WebSocket连接时使用的会话ID应该和它在登录时使用的HTTP会话ID相同。这通常意味着客户端需要保持cookie的一致性，或者在进行WebSocket连接时能够引用到同一个会话ID。
+        // 握手阶段的逻辑：确保HttpSessionHandshakeInterceptor在握手阶段能够从HTTP会话中读取username并正确地放入WebSocket会话属性中。这部分你已经通过自定义拦截器尝试实现。
+        // 前端WebSocket客户端：确保客户端在建立WebSocket连接时，正确地传递了需要的HTTP
+        // cookies（特别是包含会话ID的cookies），这样才能确保WebSocket服务器端能够关联到正确的HTTP会话。
+        // 后端安全配置：确保你的安全配置允许从WebSocket连接传递和使用HTTP cookies。有时候，特别是使用了某些安全框架（如Spring
+        // Security）时，可能需要额外配置来允许cookies的传递和识别。
+        ;
     }
 
     /**
@@ -149,13 +144,11 @@ public class WebSocketBrokerConfig implements WebSocketMessageBrokerConfigurer, 
     private void broadcastUpdatedUserList() {
         SimpMessagingTemplate template = applicationContext.getBean(SimpMessagingTemplate.class);
         if (template != null) {
-            // 创建一个新的消息对象，设置为 USER_LIST 类型
             Message userListMessage = new Message();
-            userListMessage.setType(Message.ChatType.USER_LIST); // 设置消息类型为 USER_LIST
-            userListMessage.setMessage(String.join(",", connectedUsernames)); // 用户名列表转换为字符串
+            userListMessage.setType(Message.ChatType.USER_LIST);
+            userListMessage.setMessage(String.join(",", connectedUsernames));
 
             logger.info("Broadcasting connected usernames: {}", connectedUsernames);
-            // 使用模板发送消息，注意这里发送的是 userListMessage 对象
             template.convertAndSend("/topic/message", userListMessage);
         }
     }
@@ -177,6 +170,15 @@ public class WebSocketBrokerConfig implements WebSocketMessageBrokerConfigurer, 
                     if (roomId != null) {
                         accessor.getSessionAttributes().put("roomId", roomId);
                     }
+                }
+
+                // 這裡是新增的部分，确保每次訊息傳送前都設定好安全上下文
+                ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+                if (attr != null) {
+                    HttpServletRequest request = attr.getRequest();
+                    SecurityContext sc = (SecurityContext) request.getSession()
+                            .getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+                    SecurityContextHolder.setContext(sc);
                 }
                 return message;
             }

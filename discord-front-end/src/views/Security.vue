@@ -175,7 +175,7 @@ const getUserInfo = async () => {
       `${import.meta.env.VITE_HOST_URL}/user/find-by-username`,
       { username: localUserInfo.username }
     );
-    userInfo.value = response.data; // 保存从 API 获取的用户信息
+    userInfo.value = response.data;
   } catch (error) {
     console.error("獲取用户信息失敗:", error);
     await Swal.fire("錯誤", "獲取用户信息失敗。", "error");

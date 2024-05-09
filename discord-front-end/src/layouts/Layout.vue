@@ -19,6 +19,11 @@ onMounted(() => {
 });
 
 const checkUserAuth = async () => {
+  // 檢查sessionStorage中是否存在authToken
+  if (!sessionStorage.getItem("authToken")) {
+    console.log("No authToken found, skipping user auth check.");
+    return; // 如果沒有authToken，直接返回
+  }
   try {
     await axios.post(`${import.meta.env.VITE_HOST_URL}/user/me`);
     userLoggedIn.value = true;
@@ -46,20 +51,28 @@ const logout = async () => {
     console.error("中介表中已經沒有此使用者:", error);
   }
 
-  // 执行登出逻辑
   try {
-    await axios.post(`${import.meta.env.VITE_HOST_URL}/user/logout`);
-    await Swal.fire({
-      icon: "success",
-      title: "您已登出",
-      showConfirmButton: false,
-      timer: 1500,
-    });
+    const response = await axios.post(
+      `${import.meta.env.VITE_HOST_URL}/user/logout`
+    );
+    if (response.data.logoutToken) {
+      sessionStorage.setItem("authToken", response.data.logoutToken);
+      axios.defaults.headers.common[
+        "Authorization"
+      ] = `Bearer ${response.data.logoutToken}`;
+
+      sessionStorage.clear();
+      localStorage.clear();
+
+      await Swal.fire({
+        icon: "success",
+        title: "您已登出",
+        showConfirmButton: false,
+        timer: 1500,
+      });
+    }
 
     router.push("/login");
-
-    localStorage.removeItem("userInfo");
-    sessionStorage.removeItem("bypassAuth");
   } catch (error) {
     console.error("登出時出現錯誤:", error);
     Swal.fire({

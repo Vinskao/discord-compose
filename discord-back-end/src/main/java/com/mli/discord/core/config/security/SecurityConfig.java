@@ -3,8 +3,8 @@ package com.mli.discord.core.config.security;
 import java.io.IOException;
 import java.util.Arrays;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +21,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -31,6 +32,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
+import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.security.web.firewall.HttpFirewall;
 import org.springframework.security.web.firewall.StrictHttpFirewall;
 import org.springframework.web.cors.CorsConfiguration;
@@ -107,18 +109,16 @@ public class SecurityConfig {
 				// 授權請求配置
 				.authorizeRequests(auth -> {
 					// 允許無權限訪問的URL
-
 					auth.antMatchers("/user/check-session", "/user/logout", "/user/login", "/user/find-by-id",
 							"/user/register", "/user/me", "/get-question", "/verify-answer", "/user/update-password",
-							"/error")
+							"/error", "/ws-message/**", "/send", "/get-messages",
+							"/add-security-question")
 							.permitAll()
-							.antMatchers("/ws-message/**").permitAll()
 							// 要求ADMIN或NORMAL權限的URL
-
 							.antMatchers("/export-chat-history").hasAuthority("ADMIN")
 							.antMatchers("/user-to-room/**", "/user-to-group/**", "/send", "/get-messages",
 									"/room/find-all-rooms", "/groups/find-all-groups", "/modify-security-question",
-									"/add-security-question", "/user/update-user-details")
+									"/user/update-user-details")
 							.hasAnyAuthority("ADMIN", "NORMAL").anyRequest().authenticated();
 				})
 				// 在UsernamePasswordAuthenticationFilter之前添加自定義JWT過濾器
@@ -127,28 +127,27 @@ public class SecurityConfig {
 				.sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 				// 登出配置
 				.logout(logout -> {
-					logout.logoutUrl("/user/logout").addLogoutHandler((request, response, authentication) -> {
-						HttpSession session = request.getSession(false);
-						if (session != null) {
-							session.invalidate();
-						}
-						if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
-							// 生成登出 token
-							UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-							String logoutToken = jwtService.generateAndPersistLogoutToken(userDetails);
-							response.setContentType("application/json");
-							try {
-								response.getWriter().write("{\"logoutToken\": \"" + logoutToken + "\"}");
-							} catch (IOException e) {
-								e.printStackTrace();
-							}
-						} else {
-							// 處理無法獲得用戶詳細資料的情況，例如回應一個錯誤或者記錄一個警告
-							logger.warn(
-									"No authentication principal available or principal is not an instance of UserDetails");
-							response.setStatus(HttpServletResponse.SC_BAD_REQUEST); // 或其他適當的HTTP狀態代碼
-						}
-					}).logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.OK))
+					logout.logoutUrl("/user/logout")
+							.addLogoutHandler(new LogoutHandler() {
+								@Override
+								public void logout(HttpServletRequest request, HttpServletResponse response,
+										Authentication authentication) {
+									if (authentication != null
+											&& authentication.getPrincipal() instanceof UserDetails) {
+										UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+										String logoutToken = jwtService.generateAndPersistLogoutToken(userDetails);
+										response.setContentType("application/json");
+										response.setStatus(HttpServletResponse.SC_OK);
+										try {
+											response.getWriter().write("{\"logoutToken\": \"" + logoutToken
+													+ "\", \"message\": \"Logout successful.\"}");
+										} catch (IOException e) {
+											logger.error("Error writing logout token to response", e);
+										}
+									}
+								}
+							})
+							.logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.OK))
 							.deleteCookies("JSESSIONID").clearAuthentication(true);
 				});
 
@@ -173,11 +172,17 @@ public class SecurityConfig {
 	@Bean
 	CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
-		String allowedOrigin = System.getenv("CORS_ALLOWED_ORIGIN");
-		configuration.setAllowedOrigins(Arrays.asList(allowedOrigin));
-		configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-		configuration.setAllowedHeaders(Arrays.asList("*"));
+		configuration.addAllowedMethod("GET");
+		configuration.addAllowedMethod("POST");
+		configuration.addAllowedMethod("PUT");
+		configuration.addAllowedMethod("DELETE");
+		configuration.addAllowedMethod("OPTIONS");
+		configuration.addAllowedHeader("*");
 		configuration.setAllowCredentials(true);
+		configuration.setAllowedOriginPatterns(
+				Arrays.asList("http://*.localhost", "https://*.localhost", "http://localhost:8091",
+						"http://localhost:8090"));
+
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", configuration);
 		return source;

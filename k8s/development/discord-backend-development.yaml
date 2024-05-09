@@ -29,4 +29,7 @@ spec:
                   name: db-secret # 密碼從 Kubernetes Secret 中獲取
                   key: password
             - name: CORS_ALLOWED_ORIGIN
-              value: "http://localhost:8090"
+              valueFrom:
+                configMapKeyRef:
+                  name: cors-config
+                  key: allowedOrigins

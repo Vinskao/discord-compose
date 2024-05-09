@@ -4,11 +4,10 @@ kind: Service
 metadata:
   name: discord-backend
 spec:
-  type: NodePort # 服務類型為 NodePort，允許外部訪問
+  type: ClusterIP # 仅在集群内部访问
   ports:
     - port: 8080 # 服務端口
       targetPort: 8080 # Pod 上的目標端口
-      nodePort: 30000 # 指定節點上的端口
   selector:
     app: discord-backend # 選擇標籤為 app=discord-backend 的 Pod
   sessionAffinity: ClientIP

@@ -102,9 +102,7 @@ public class UserToRoomController {
                 return ResponseEntity.noContent().build();
             }
         } catch (Exception e) {
-            // 日志记录异常信息
             logger.error("Error occurred while fetching users by room ID: ", e);
-            // 返回一般性错误信息给客户端
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("An error occurred while fetching users.");
         }
@@ -127,9 +125,7 @@ public class UserToRoomController {
                 return ResponseEntity.noContent().build();
             }
         } catch (Exception e) {
-            // 日志记录异常信息
             logger.error("Error occurred while fetching rooms by username: ", e);
-            // 返回一般性错误信息给客户端
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("An error occurred while fetching rooms.");
         }
@@ -147,13 +143,13 @@ public class UserToRoomController {
         try {
             int rowsAffected = userToRoomService.deleteAllUserEntriesByUsername(usernameDTO.getUsername());
             if (rowsAffected > 0) {
-                return ResponseEntity.ok().body("All entries for the user deleted successfully");
+                return ResponseEntity.ok().body("所有該使用者的房間項目已成功刪除");
             } else {
-                return ResponseEntity.badRequest().body("No entries found for the user");
+                return ResponseEntity.ok().body("目前已經沒有使用者在房間中，無需進行刪除");
             }
         } catch (Exception e) {
-            logger.error("Exception deleting all entries for username: {}", usernameDTO.getUsername(), e);
-            return ResponseEntity.badRequest().body("Failed to delete entries for the user");
+            logger.error("刪除所有該使用者的房間項目時發生錯誤: {}", usernameDTO.getUsername(), e);
+            return ResponseEntity.badRequest().body("刪除該使用者的房間項目失敗");
         }
     }
 

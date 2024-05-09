@@ -92,7 +92,12 @@ const fetchSecurityQuestion = async () => {
     showSecurityQuestion.value = true;
   } catch (error) {
     console.error("Error fetching security question:", error);
-    await Swal.fire("錯誤", "請先登入後設定安全問題", "error");
+    // 現在顯示後端返回的具體錯誤訊息
+    const errorMessage =
+      error.response && error.response.data
+        ? error.response.data
+        : "請先登入後設定安全問題";
+    await Swal.fire("錯誤", errorMessage, "error");
   }
 };
 
@@ -155,25 +160,37 @@ const login = async () => {
       console.log("現在的login username是" + username.value);
 
       try {
-        await axios.post(
+        const response = await axios.post(
           `${
             import.meta.env.VITE_HOST_URL
           }/user-to-room/delete-all-by-username`,
           JSON.stringify({ username: username.value }),
           { headers: { "Content-Type": "application/json" } }
         );
+        if (response.status === 200 && response.data) {
+          // 利用回應中的訊息向用戶提供適當的反饋
+          console.log(response.data); // 打印後端的回應訊息，以便於調試和確認
+        }
       } catch (error) {
-        console.error("Failed to delete user rooms:", error);
+        console.error("刪除該使用者的房間項目失敗:", error);
+        errorMessage.value =
+          error.response && error.response.data
+            ? error.response.data
+            : "刪除房間項目時出現問題";
       }
 
       try {
-        await axios.post(
+        const response = await axios.post(
           `${
             import.meta.env.VITE_HOST_URL
           }/user-to-group/delete-all-by-username`,
           JSON.stringify({ username: username.value }),
           { headers: { "Content-Type": "application/json" } }
         );
+        if (response.status === 200 && response.data) {
+          // 檢查後端是否返回了特定的訊息
+          console.log(response.data); // 打印後端回應的訊息，便於確認是成功刪除還是無需操作
+        }
       } catch (error) {
         console.error("Failed to delete user groups:", error);
       }

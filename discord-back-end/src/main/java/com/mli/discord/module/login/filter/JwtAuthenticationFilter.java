@@ -55,19 +55,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
+        String uri = request.getServletPath();
+        // 如果是登入請求，直接跳過JWT檢查
+        if (uri.endsWith("/user/login") || uri.endsWith("/verify-answer") || uri.endsWith("/get-question")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String username;
-        logger.debug("JwtAuthenticationFilter: Checking for Authorization header");
-
-        // 以下條件為沒有攜帶Token的請求
-        // 如果未攜帶JWT令牌或令牌不以"Bearer "開頭，則直接呼叫filterChain.doFilter，繼續處理下一個過濾器或請求處理程序。
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
-        jwt = authHeader.substring(7); // 取"Bearer "後面的Token
-        username = jwtService.extractUsername(jwt); // 提取Token中的username
+        final String jwt = authHeader.substring(7);
+        final String username = jwtService.extractUsername(jwt);
+
+        logger.debug("JwtAuthenticationFilter: Checking for Authorization header");
+
+        // 以下條件為沒有攜帶Token的請求
+        // 如果未攜帶JWT令牌或令牌不以"Bearer "開頭，則直接呼叫filterChain.doFilter，繼續處理下一個過濾器或請求處理程序。
 
         logger.debug("JwtAuthenticationFilter: Extracted Username: {}", username);
 
