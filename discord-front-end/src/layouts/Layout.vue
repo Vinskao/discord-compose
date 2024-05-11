@@ -131,6 +131,13 @@ const logout = async () => {
           to="/security"
           >安全</router-link
         >
+
+        <router-link
+          v-if="!isInRoom && userLoggedIn"
+          class="nav-item nav-link"
+          to="/history"
+          >記錄</router-link
+        >
         <button
           v-if="!isInRoom && userLoggedIn"
           class="nav-item nav-link logout-button"

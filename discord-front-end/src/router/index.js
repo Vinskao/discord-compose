@@ -5,6 +5,7 @@ import index from "../views/Index.vue";
 import login from "../views/Login.vue";
 import register from "../views/Register.vue";
 import security from "../views/Security.vue";
+import history from "../views/History.vue";
 
 import axios from "axios";
 const routes = [
@@ -16,6 +17,10 @@ const routes = [
   {
     path: "/register",
     component: register,
+  },
+  {
+    path: "/history",
+    component: history,
   },
   {
     path: "/index",

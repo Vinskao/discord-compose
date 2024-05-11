@@ -34,6 +34,7 @@ import com.mli.discord.module.login.dto.UpdateUserDetailsDTO;
 import com.mli.discord.module.login.dto.UserIdDTO;
 import com.mli.discord.module.login.dto.UsernameDTO;
 import com.mli.discord.module.login.model.User;
+import com.mli.discord.module.login.service.JwtService;
 import com.mli.discord.module.login.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -58,6 +59,9 @@ public class UserController {
     private UserRepository userRepository;
     @Autowired
     private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private JwtService jwtService;
 
     /**
      * Processes login requests. Delegates authentication to the UserService and
@@ -97,6 +101,32 @@ public class UserController {
             logger.error("Login failed: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new AuthenticationResponse("Login Failed: " + e.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/renew-token")
+    public ResponseEntity<AuthenticationResponse> renewToken() {
+        logger.info("Attempting to renew token");
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+            if (authentication != null && authentication.isAuthenticated()) {
+                String username = authentication.getName();
+                logger.info("Renewing token for user: {}", username);
+
+                UserDetails userDetails = userService.loadUserByUsername(username);
+                String newJwtToken = jwtService.generateAndPersistToken(userDetails);
+
+                return ResponseEntity.ok(new AuthenticationResponse("Token renewed successfully", newJwtToken));
+            } else {
+                logger.error("No authentication information found or user not authenticated.");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new AuthenticationResponse("User not authenticated", null));
+            }
+        } catch (Exception e) {
+            logger.error("Failed to renew token: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new AuthenticationResponse("Failed to renew token: " + e.getMessage(), null));
         }
     }
 

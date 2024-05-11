@@ -115,10 +115,10 @@ public class SecurityConfig {
 							"/add-security-question")
 							.permitAll()
 							// 要求ADMIN或NORMAL權限的URL
-							.antMatchers("/export-chat-history").hasAuthority("ADMIN")
+							.antMatchers("/export-chat-history", "save-chat-history").hasAuthority("ADMIN")
 							.antMatchers("/user-to-room/**", "/user-to-group/**", "/send", "/get-messages",
 									"/room/find-all-rooms", "/groups/find-all-groups", "/modify-security-question",
-									"/user/update-user-details")
+									"/user/update-user-details", "user/renew-token")
 							.hasAnyAuthority("ADMIN", "NORMAL").anyRequest().authenticated();
 				})
 				// 在UsernamePasswordAuthenticationFilter之前添加自定義JWT過濾器

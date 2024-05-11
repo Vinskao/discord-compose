@@ -1,20 +1,15 @@
 package com.mli.discord.module.message.controller;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -28,10 +23,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.mli.discord.module.login.dto.UsernameDTO;
 import com.mli.discord.module.message.dto.MessageDTO;
 import com.mli.discord.module.message.dto.RoomIdDTO;
+import com.mli.discord.module.message.dto.RoomUserFileDTO;
+import com.mli.discord.module.message.dto.UserFileDTO;
+import com.mli.discord.module.message.model.Key;
 import com.mli.discord.module.message.model.Message;
+import com.mli.discord.module.message.model.RSAEntity;
+import com.mli.discord.module.message.service.ChatService;
 import com.mli.discord.module.message.service.MessageService;
+import com.mli.discord.module.message.service.RSAService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -46,6 +48,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class ChatController {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
+	@Autowired
+	private RSAService rsaService;
+	@Autowired
+	private ChatService chatService;
 	@Autowired
 	private MessageService messageService;
 
@@ -170,51 +176,80 @@ public class ChatController {
 	}
 
 	/**
-	 * 導出聊天歷史記錄為Excel文件。
-	 * 
-	 * @param roomIdDTO 房間IDDTO
-	 * @return ResponseEntity<byte[]> 包含Excel文件的響應實體
+	 * Endpoint to export chat history as an Excel file, which prompts download with
+	 * the specified file name.
+	 *
+	 * @param userFileDTO DTO containing room ID, file name, and username.
+	 * @return ResponseEntity with the Excel file as a byte array.
 	 */
-	@Operation(summary = "導出聊天歷史記錄為Excel文件")
 	@PostMapping("/export-chat-history")
-	public ResponseEntity<byte[]> exportChatHistory(@RequestBody RoomIdDTO roomIdDTO) {
-		logger.info("Exporting chat history for room ID: {}", roomIdDTO.getRoomId());
-
-		// 創建新的Excel工作簿
-		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
-			XSSFSheet sheet = workbook.createSheet("Chat History");
-			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-			// 創建header
-			Row headerRow = sheet.createRow(0);
-			String[] headerStrings = { "Type", "Username", "Time", "Message" };
-			for (int i = 0; i < headerStrings.length; i++) {
-				Cell cell = headerRow.createCell(i);
-				cell.setCellValue(headerStrings[i]);
-			}
-
-			// 填充data
-			List<Message> messages = messageService.getMessagesByRoomId(roomIdDTO.getRoomId());
-			int rowNum = 1;
-			for (Message msg : messages) {
-				Row row = sheet.createRow(rowNum++);
-				row.createCell(0).setCellValue(msg.getType().toString());
-				row.createCell(1).setCellValue(msg.getUsername());
-				row.createCell(2).setCellValue(msg.getTime().format(formatter));
-				row.createCell(3).setCellValue(msg.getMessage());
-			}
-
-			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-			workbook.write(outputStream);
-
+	public ResponseEntity<?> exportChatHistory(@RequestBody UserFileDTO userFileDTO) {
+		try {
+			byte[] excelFile = chatService.generateChatHistoryExcel(userFileDTO);
 			HttpHeaders headers = new HttpHeaders();
-			headers.setContentDisposition(
-					ContentDisposition.builder("attachment").filename("chat_history.xlsx").build());
-			headers.add(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+			headers.setContentDisposition(ContentDisposition.builder("attachment")
+					.filename(userFileDTO.getFileName())
+					.build());
+			headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE);
 
-			return new ResponseEntity<>(outputStream.toByteArray(), headers, HttpStatus.OK);
+			return ResponseEntity.ok().headers(headers).body(excelFile);
+		} catch (SecurityException se) {
+			logger.error("Security exception: " + se.getMessage());
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("驗證數位簽章失敗: " + se.getMessage());
 		} catch (IOException e) {
-			logger.error("Error while exporting chat history", e);
+			logger.error("IO exception: " + e.getMessage());
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body("Server error occurred while exporting file.");
+		} catch (Exception e) {
+			logger.error("General exception: " + e.getMessage());
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred.");
+		}
+	}
+
+	@Operation(summary = "導出並保存聊天歷史記錄")
+	@PostMapping("/save-chat-history")
+	public ResponseEntity<String> saveChatHistory(@RequestBody RoomUserFileDTO roomUserFileDTO) {
+		try {
+			String excelBase64 = chatService.generateChatHistoryExcelBase64(roomUserFileDTO);
+
+			// 生成鑰匙對
+			Key key = rsaService.createKeyPair();
+
+			// 使用生成的私鑰進行簽名
+			String signature = rsaService.signData(excelBase64, key.getPrivateKey());
+
+			// 创建签名记录实体并保存到数据库
+			RSAEntity rsaEntity = new RSAEntity();
+			rsaEntity.setUsername(roomUserFileDTO.getUsername());
+			rsaEntity.setName(roomUserFileDTO.getFileName());
+			rsaEntity.setPub(key.getPublicKey());
+			rsaEntity.setSignature(signature);
+			rsaEntity.setData(excelBase64);
+			rsaService.insertSignatureRecord(rsaEntity);
+
+			return ResponseEntity.ok("Chat history exported and saved successfully.");
+		} catch (Exception e) {
+			logger.error("Error while exporting and saving chat history", e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to save chat history.");
+		}
+	}
+
+	/**
+	 * Retrieves all RSA entities for a specified username.
+	 *
+	 * @param username The username to search for RSA entities.
+	 * @return A ResponseEntity containing the list of RSA entities.
+	 */
+	@Operation(summary = "Retrieve all RSA entities for a specified username")
+	@PostMapping("/get-rsa-entities")
+	public ResponseEntity<List<RSAEntity>> getRSAEntitiesByUsername(@RequestBody UsernameDTO usernameDTO) {
+		try {
+			RSAEntity rsaEntity = new RSAEntity();
+			rsaEntity.setUsername(usernameDTO.getUsername());
+			List<RSAEntity> entities = chatService.selectAllFilesByUsername(rsaEntity);
+			return ResponseEntity.ok(entities);
+		} catch (Exception e) {
+			logger.error("Error retrieving RSA entities", e);
 			return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}

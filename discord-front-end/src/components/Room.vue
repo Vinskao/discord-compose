@@ -53,8 +53,8 @@
       </button>
     </div>
   </div>
-  <button v-if="canExportChatHistory" @click="exportChatHistory">
-    聊天紀錄下載
+  <button v-if="canExportChatHistory" @click="saveChatHistory">
+    聊天紀錄保存
   </button>
 </template>
 <script setup>
@@ -546,7 +546,43 @@ const fetchRoomUsers = async (roomId) => {
     console.error("獲取房間用戶時發生錯誤:", error);
   }
 };
+const saveChatHistory = async () => {
+  const date = new Date();
+  const timestamp = `${date.getFullYear()}${(date.getMonth() + 1)
+    .toString()
+    .padStart(2, "0")}${date.getDate().toString().padStart(2, "0")}_${date
+    .getHours()
+    .toString()
+    .padStart(2, "0")}${date.getMinutes().toString().padStart(2, "0")}${date
+    .getSeconds()
+    .toString()
+    .padStart(2, "0")}`;
+  const filename = `chat_history_room_${props.roomId}_${currentUserUsername.value}_${timestamp}.xlsx`;
 
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_HOST_URL}/save-chat-history`,
+      {
+        roomId: props.roomId,
+        username: currentUserUsername.value,
+        fileName: filename,
+      }
+    );
+    if (response.status === 200) {
+      console.log("Chat history saved successfully.");
+      Swal.fire("Success", "聊天記錄已保存", "success");
+    } else {
+      throw new Error("Failed to save chat history");
+    }
+  } catch (error) {
+    console.error("Error saving chat history:", error);
+    Swal.fire({
+      icon: "error",
+      title: "Oops...",
+      text: "保存聊天失敗!",
+    });
+  }
+};
 const exportChatHistory = async () => {
   console.log(`Exporting chat history for room ID: ${props.roomId}`);
 

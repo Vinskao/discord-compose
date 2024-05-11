@@ -63,6 +63,7 @@ import Layout from "../layouts/Layout.vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
 import Swal from "sweetalert2";
+import VueJwtDecode from "vue-jwt-decode";
 
 axios.defaults.withCredentials = true;
 const userLoggedIn = ref(false);
@@ -140,7 +141,28 @@ const login = async () => {
     );
 
     if (loginResponse.status === 200) {
-      sessionStorage.setItem("authToken", loginResponse.data.token);
+      const { token } = loginResponse.data;
+      sessionStorage.setItem("authToken", token);
+      const decoded = VueJwtDecode.decode(token);
+      console.log(decoded);
+
+      const currentTime = Date.now() / 1000; // 獲取當前時間的秒數
+      const timeLeft = decoded.exp - currentTime; // 計算剩餘時間
+      setTimeout(() => {
+        Swal.fire({
+          title: "即將過期",
+          text: "您的登錄即將過期，是否要更新？",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "更新",
+          cancelButtonText: "取消",
+        }).then((result) => {
+          if (result.isConfirmed) {
+            renewToken(); // 實現此函數以續期token
+          }
+        });
+      }, (timeLeft - 180) * 1000); // 在過期前3分鐘提醒
+
       axios.defaults.headers.common[
         "Authorization"
       ] = `Bearer ${loginResponse.data.token}`;
