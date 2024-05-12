@@ -23,143 +23,21 @@ http://localhost:8088/swagger-ui/index.html
 
 ### 原理
 
-使用 docker-compose.yml 一次啟動多服務。
+#### HTTPS 是否一定要使用 TLS？
 
-總共需要額外撰寫 docker-compose.yml、前端 Dockerfile、後端 Dockerfile、start-services.sh、資料庫 init-db.sql 五個檔案。
+HTTPS (HyperText Transfer Protocol Secure) 原本是基於 SSL (Secure Sockets Layer) 加密，後來發展到現在主要使用 TLS (Transport Layer Security)。事實上，TLS 是 SSL 的後續版本，提供了更強的安全性。因此，現在的 HTTPS 通信基本上是透過 TLS 實現的。
 
-init-db.sql 裡面放資料庫一啟動就想要建立的表跟插入的資料，直接在跟目錄建立一個 data 資料夾，然後把 sql 檔案放入。
+#### CA 是必要的嗎？
 
-### docker-compose
+CA 的全稱是 Certificate Authority（證書授權中心）。在公開鑰匙基礎設施 (PKI) 中，CA 負責簽發和管理安全/數位證書。CA 是必要的，因為它確保了交換數據雙方的身份可以被信任。沒有 CA，用戶端對伺服器的身份驗證就會缺乏信任基礎，增加中間人攻擊的風險。
 
-此檔案負責所有容器啟動的總設定，他可以連結到個別容器的 Dockerfile 去 run 裡面的詳細設定，寫完此檔案，在根目錄執行：
+#### HTTPS 的握手過程
 
-```bash
-docker-compose up
-```
+HTTPS 的握手過程主要是為了安全地交換加密用的鑰匙，並確認對方的身份。握手過程包括以下幾個主要步驟：
 
-如果要重新建立鏡像：
-
-```bash
-docker compose up --build
-```
-
-如果只想要重新建立後端的鏡像：
-
-```bash
-docker-compose up --no-deps --build discord_backend
-```
-
---no-deps：不啟動服務的依賴項，也就是只啟動你指定的服務。
-
-就可以一次啟動整個服務。但是因為是同時啟動，如果有資料庫要先完成，後端再插入初始資料的需求，就可能在後端插入資料時資料庫還沒建好。所以才有以下這個檔案的出現。
-
-```yml
-version: "3.8"
-
-services:
-  sql_edge:
-    image: mcr.microsoft.com/azure-sql-edge:latest
-    environment:
-      ACCEPT_EULA: "Y"
-      SA_PASSWORD: "Wawi247525="
-      MSSQL_COLLATION: "Chinese_Taiwan_Stroke_CI_AI"
-      TZ: "Asia/Taipei"
-    ports:
-      - "1433:1433"
-    volumes:
-      # 使用先前已經設定好的volume[discord_db_data]來同步來自mssql容器的即時資料
-      - discord_db_data:/var/opt/mssql
-    networks:
-      - discord_network
-
-  sqlcmd:
-    image: mcr.microsoft.com/mssql-tools:latest
-    command: >
-      /bin/bash -c "
-        sleep 20;
-        /opt/mssql-tools/bin/sqlcmd -S sql_edge -U SA -P 'Wawi247525=' -d master -i /data/init-db.sql;
-        "
-    # 此命令可以先指示容器使用bash去執行sqlcmd連線，並input初始化資料進去
-    volumes:
-      - ./data:/data
-    networks:
-      - discord_network
-
-  discord_backend:
-    build:
-      context: ./discord-back-end
-      dockerfile: Dockerfile
-    ports:
-      - "8088:8088"
-    volumes:
-      - java_logs:/var/opt/logs/discord
-    networks:
-      - discord_network
-    environment:
-      #   此處的DATASOURCE跟後端的application.yml配合
-      - DATASOURCE_URL=jdbc:sqlserver://sql_edge:1433;databaseName=discord;trustServerCertificate=true
-      - DATASOURCE_USERNAME=SA
-      - DATASOURCE_PASSWORD=${DATASOURCE_PASSWORD}
-      #   如果密碼用這種方式寫，就需要在跟目錄建立.env檔來放置密碼
-
-  discord_frontend:
-    build:
-      context: ./discord-front-end
-      dockerfile: Dockerfile
-    ports:
-      - "8090:8090"
-    networks:
-      - discord_network
-
-volumes:
-  discord_db_data:
-  java_logs:
-
-networks:
-  discord_network:
-    name: discord_network
-    external: true
-    # 為true時表示該網路已經存在，且不是由目前的Docker Compose配置所建立的
-```
-
-#### start-services.sh
-
-此為腳本，目的為決定 docker-coompose 中服務的執行順序。在每個服務啟動中間設定等待時間，以確保後啟動的服務可以運用先啟動的服務之功能。
-
-```sh
-#!/bin/bash
-
-# 步驟 1: 啟動資料庫服務
-echo "正在啟動資料庫服務..."
-docker-compose up -d sql_edge
-
-# 等待資料庫服務啟動
-echo "正在等待資料庫服務啟動..."
-sleep 5
-
-# 步驟 2: 執行資料庫初始化腳本
-echo "正在初始化資料庫..."
-docker-compose up -d sqlcmd
-
-# 等待資料庫初始化完成
-echo "正在等待資料庫初始化完成..."
-sleep 20
-
-# 步驟 3: 禁用 Docker BuildKit，建構並啟動後端服務
-echo "正在建構並啟動後端服務..."
-# 如果不用重build
-docker-compose up -d discord_backend
-# 如果要重build
-docker-compose up --build -d discord_backend
-
-
-# 步驟 4: 啟動前端服務
-echo "正在啟動前端服務..."
-# 如果不用重build
-docker-compose up -d discord_frontend
-# 如果要重build
-docker-compose up --build -d discord_frontend
-
-echo "所有服務已啟動完成。"
-
-```
+- 客戶端 Hello：客戶端發送一個包含支持的 TLS 版本、加密套件列表和一個隨機數的消息。
+- 服務器 Hello：服務端回應其選擇的加密套件和另一個隨機數。
+- 證書和鑰匙交換：服務端發送其數位證書（含公鑰）給客戶端。服務端可能還會發送一個鑰匙交換消息，客戶端將使用這些信息來生成對稱加密的鑰匙。
+- 客戶端鍵交換：客戶端根據服務器提供的公鑰，生成一個預導密鑰（pre-master secret），並將其加密後發送回服務器。
+- 結束握手：雙方確認握手過程完成，並開始使用對稱加密來加密通信數據。
+  握手過程達到加密的原因主要是通過交換加密的鑰匙（如預導密鑰），這個過程中使用了公鑰加密和私鑰解密的機制。數據本身則是使用對稱加密來保護。
