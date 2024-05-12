@@ -1,10 +1,4 @@
-### 操作步驟
-
-在資料夾跟目錄執行以下指令以啟動資料庫、後端、前端：
-
-```bash
-./start-services.sh
-```
+### 連線
 
 前端 url：
 http://localhost:8090/
@@ -15,10 +9,10 @@ http://localhost:8088/swagger-ui/index.html
 登入帳密：
 
 ```
-| 帳號              密碼        權限    |
-| chiaki@mli.com   password1   ADMIN  |
-| min@mli.com      password2   NORMAL |
-| alice@mli.com    password3   NORMAL |
+| 帳號              密碼        權限
+| chiaki@mli.com   password1   ADMIN
+| min@mli.com      password2   NORMAL
+| alice@mli.com    password3   NORMAL
 ```
 
 ### 原理
