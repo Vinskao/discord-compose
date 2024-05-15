@@ -34,6 +34,8 @@ import { ref, onMounted } from "vue";
 import Layout from "../layouts/Layout.vue";
 axios.defaults.withCredentials = true;
 const rsaEntities = ref([]);
+import { useRouter } from "vue-router";
+const router = useRouter();
 
 onMounted(() => {
   fetchRSAEntities();
@@ -45,6 +47,15 @@ const fetchRSAEntities = async () => {
       `${import.meta.env.VITE_HOST_URL}/user/me`
     );
     const username = userInfoResponse.data.username.replace("@mli.com", "");
+    // 檢查是否具有ADMIN權限
+    if (!userInfoResponse.data.authorities.includes("ADMIN")) {
+      Swal.fire({
+        icon: "error",
+        title: "Access Denied",
+        text: "請聯絡管理員",
+      });
+      router.push("/index");
+    }
     const response = await axios.post(
       `${import.meta.env.VITE_HOST_URL}/get-rsa-entities`,
       { username }

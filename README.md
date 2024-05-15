@@ -2,9 +2,11 @@
 
 前端 url：
 http://localhost:8090/
+http://www.localhost/
 
 後端 swagger url：
-http://localhost:8088/swagger-ui/index.html
+http://localhost:8080/swagger-ui/index.html
+http://api.localhost/swagger-ui/index.html
 
 登入帳密：
 

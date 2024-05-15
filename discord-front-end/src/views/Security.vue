@@ -218,23 +218,35 @@ onMounted(async () => {
   }
 });
 
-const toggleSection = (section) => {
-  // Only toggle the 'modifyInfo' section if the resetPassword state is true
-  if (
-    section === "modifyInfo" &&
-    !(route.fullPath && history.state && history.state.resetPassword)
-  ) {
-    // Unauthorized attempt to open the modifyInfo section
-    Swal.fire({
-      icon: "error",
-      title: "無法訪問",
-      text: "請前往登入頁面使用忘記密碼以進入進行密碼修改",
-    });
-    return; // Prevent the section from toggling
+const toggleSection = async (section) => {
+  // 直接切換“修改密碼”部分，無需進行用戶驗證
+  if (section === "modifyInfo") {
+    sections[section] = !sections[section];
+    return;
   }
-  sections[section] = !sections[section];
-};
 
+  // 對其他部分進行用戶驗證
+  try {
+    const userInfoResponse = await axios.post(
+      `${import.meta.env.VITE_HOST_URL}/user/me`
+    );
+
+    // 檢查用戶資訊是否存在
+    if (userInfoResponse.data && userInfoResponse.data.username) {
+      sections[section] = !sections[section];
+    } else {
+      throw new Error("No user info returned");
+    }
+  } catch (error) {
+    console.error("用戶未登錄或session已過期:", error);
+    await Swal.fire({
+      icon: "warning",
+      title: "請登入",
+      text: "您必須登入才能查看此資料。",
+    });
+    router.push("/login");
+  }
+};
 const addQuestion = async () => {
   if (!userInfo.value || !userInfo.value.username) {
     await Swal.fire(
